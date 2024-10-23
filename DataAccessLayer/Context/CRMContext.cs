@@ -10,10 +10,11 @@ namespace DataAccessLayer.Context
 {
     public class CRMContext:DbContext
     {
+        public CRMContext(DbContextOptions<CRMContext> options) : base(options) { }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<User> Users { get; set; }
 
-        public CRMContext(DbContextOptions<CRMContext> options) : base(options) { }
+       
     }
     
 }
