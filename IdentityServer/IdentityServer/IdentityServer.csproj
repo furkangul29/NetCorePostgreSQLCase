@@ -5,25 +5,34 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- IdentityServer ve Google Auth Paketleri -->
-		<PackageReference Include="IdentityServer4" Version="4.0.0" />
-		<PackageReference Include="IdentityServer4.AspNetIdentity" Version="4.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.8" />
+		<!-- AutoMapper paketleri -->
+		<PackageReference Include="AutoMapper" Version="12.0.1" />
+		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
 
-		<!-- PostgreSQL ve Entity Framework Core Paketleri -->
-		<PackageReference Include="Npgsql" Version="8.0.5" />
-		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8" />
-		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
-		<PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.8" />
+		<!-- Identity Server paketleri -->
+		<PackageReference Include="Duende.IdentityServer" Version="7.0.1" />
+		<PackageReference Include="Duende.IdentityServer.AspNetIdentity" Version="7.0.1" />
+		<PackageReference Include="Duende.IdentityServer.EntityFramework" Version="7.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.2" />
 
-		<!-- Swagger ve Serilog -->
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
-		<PackageReference Include="Serilog.AspNetCore" Version="3.2.0" />
+		<!-- Entity Framework paketleri -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.2" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
 
-		<!-- EFCore Diagnostics (Bu paket 8.0 ile uyumlu olmalı) -->
-		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.8" />
+		<!-- Authentication ve diğer paketler -->
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.2" />
+		<PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.3.1" />
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Serilog" Version="4.1.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.Core" Version="2.2.0" />
+
 	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\DataAccessLayer\DataAccessLayer.csproj" />
+	</ItemGroup>
+
 
 </Project>

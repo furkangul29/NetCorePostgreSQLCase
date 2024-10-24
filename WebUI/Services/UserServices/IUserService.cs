@@ -1,6 +1,6 @@
 ﻿using WebUI.Models;
 
-namespace WebUI.Interfaces
+namespace WebUI.Services.UserServices
 {
     public interface IUserService
     {

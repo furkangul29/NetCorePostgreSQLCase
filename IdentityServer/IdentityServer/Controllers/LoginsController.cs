@@ -3,9 +3,10 @@ using IdentityServer.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.Extensions.Logging;
 using IdentityServer.Tools;
 using System.Threading.Tasks;
+using System;
 
 namespace IdentityServer.Controllers
 {
@@ -15,30 +16,49 @@ namespace IdentityServer.Controllers
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<LoginsController> _logger;
 
-        public LoginsController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+        public LoginsController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, ILogger<LoginsController> logger)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _logger = logger;
         }
 
         [HttpPost]
         public async Task<IActionResult> UserLogin(UserLoginDto userLoginDto)
         {
-            var result = await _signInManager.PasswordSignInAsync(userLoginDto.Username, userLoginDto.Password, false, false);
-            var user = await _userManager.FindByNameAsync(userLoginDto.Username);
+            _logger.LogInformation("Login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
 
-            if (result.Succeeded)
+            try
             {
-                GetCheckAppUserViewModel model = new GetCheckAppUserViewModel();
-                model.Username = userLoginDto.Username;
-                model.Id = user.Id;
-                var token = JwtTokenGenerator.GenerateToken(model);
-                return Ok(token);
+                var result = await _signInManager.PasswordSignInAsync(userLoginDto.Username, userLoginDto.Password, false, false);
+                var user = await _userManager.FindByNameAsync(userLoginDto.Username);
+
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Successful login for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+
+                    GetCheckAppUserViewModel model = new GetCheckAppUserViewModel
+                    {
+                        Username = userLoginDto.Username,
+                        Id = user.Id
+                    };
+                    var token = JwtTokenGenerator.GenerateToken(model);
+
+                    _logger.LogInformation("JWT token generated for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+                    return Ok(token);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+                    return Ok("Kullanıcı Adı veya Şifre Hatalı");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return Ok("Kullanıcı Adı veya Şifre Hatalı");
+                _logger.LogError(ex, "Error occurred during login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+                return StatusCode(500, "An internal error occurred.");
             }
         }
     }

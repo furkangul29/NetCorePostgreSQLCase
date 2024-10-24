@@ -1,8 +1,7 @@
 ﻿using IdentityModel.AspNetCore.AccessTokenManagement;
 using IdentityModel.Client;
-using WebUI.Interfaces;
 
-namespace WebUI.Services.Concrete
+namespace WebUI.Services.ClientCredentialTokenServices
 {
     public class ClientCredentialTokenService : IClientCredentialTokenService
     {

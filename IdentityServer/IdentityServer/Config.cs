@@ -1,37 +1,27 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-using IdentityServer4;
-using IdentityServer4.Models;
+﻿using Duende.IdentityServer;
+using Duende.IdentityServer.Models;
 using System.Collections.Generic;
 
-namespace  IdentityServer
+namespace IdentityServer
 {
     public static class Config
     {
+        // Daha açıklayıcı olmak için ApiResource adlarını güncelleyelim
         public static IEnumerable<ApiResource> ApiResources => new ApiResource[]
         {
-            // Müşteriler API kaynağı
-            new ApiResource("ResourceCustomers")
+            new ApiResource("customersAPI", "Customers API")
             {
-                Scopes = { "CustomersReadPermission", "CustomersWritePermission" } // Müşterileri okuma ve yazma izni
+                Scopes = { "customers.read", "customers.write", "customers.filter" }
             },
-            // Müşterileri filtreleme API kaynağı
-            new ApiResource("ResourceCustomersFilter")
+            new ApiResource("usersAPI", "Users API")
             {
-                Scopes = { "CustomersFilterPermission" } // Müşterileri filtreleme izni
+                Scopes = { "users.read", "users.write" }
             },
-
-            // Kullanıcılar API kaynağı
-            new ApiResource("ResourceUsers")
-            {
-                Scopes = { "UsersReadPermission", "UsersWritePermission" } // Kullanıcıları okuma ve yazma izni
-            },
-
-            // Yerel API kaynakları
+            // Yerel API kaynağı (değiştirilmedi)
             new ApiResource(IdentityServerConstants.LocalApi.ScopeName)
         };
 
+        // IdentityResources (değiştirilmedi)
         public static IEnumerable<IdentityResource> IdentityResources => new IdentityResource[]
         {
             new IdentityResources.OpenId(),
@@ -39,14 +29,14 @@ namespace  IdentityServer
             new IdentityResources.Email()
         };
 
+        // ApiScopes (daha açıklayıcı isimlendirme)
         public static IEnumerable<ApiScope> ApiScopes => new ApiScope[]
         {
-            new ApiScope("UsersReadPermission", "Read authority for user operations"),
-            new ApiScope("UsersWritePermission", "Write authority for user operations"),
-            new ApiScope("CustomersReadPermission", "Read authority for customers operations"),
-            new ApiScope("CustomersWritePermission", "Write authority for customers operations"),
-            // Müşteriler için filtreleme API izni (sadece admin erişimi)
-            new ApiScope("CustomersFilterPermission", "Filter authority for customers operations (Admin only)"),
+            new ApiScope("users.read", "Kullanıcıları okuma yetkisi"),
+            new ApiScope("users.write", "Kullanıcıları yazma yetkisi"),
+            new ApiScope("customers.read", "Müşterileri okuma yetkisi"),
+            new ApiScope("customers.write", "Müşterileri yazma yetkisi"),
+            new ApiScope("customers.filter", "Müşterileri filtreleme yetkisi"),
             new ApiScope(IdentityServerConstants.LocalApi.ScopeName)
         };
 
@@ -60,16 +50,15 @@ namespace  IdentityServer
                 AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
                 ClientSecrets = { new Secret("crmsecret".Sha256()) },
                 AllowedScopes = {
-                    "CustomersReadPermission",  // Müşteri okuma izni
-                    "CustomersWritePermission", // Müşteri yazma izni
-                    IdentityServerConstants.LocalApi.ScopeName,
-                    IdentityServerConstants.StandardScopes.Email,
+                    "customers.read",
+                    "customers.write",
                     IdentityServerConstants.StandardScopes.OpenId,
-                    IdentityServerConstants.StandardScopes.Profile
+                    IdentityServerConstants.StandardScopes.Profile,
+                    IdentityServerConstants.StandardScopes.Email
                 }
             },
 
-            // CRM Yönetici (CrmManager)
+            // CRM Yönetici (CrmManager) - customers.filter eklendi
             new Client
             {
                 ClientId = "CrmManagerId",
@@ -77,17 +66,16 @@ namespace  IdentityServer
                 AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
                 ClientSecrets = { new Secret("crmsecret".Sha256()) },
                 AllowedScopes = {
-                    "CustomersReadPermission",  // Müşteri okuma izni
-                    "CustomersWritePermission", // Müşteri yazma izni
-                    "CustomersFilterPermission", // Müşteri filtreleme izni
-                    IdentityServerConstants.LocalApi.ScopeName,
-                    IdentityServerConstants.StandardScopes.Email,
+                    "customers.read",
+                    "customers.write",
+                    "customers.filter", // Müşteri filtreleme yetkisi
                     IdentityServerConstants.StandardScopes.OpenId,
-                    IdentityServerConstants.StandardScopes.Profile
+                    IdentityServerConstants.StandardScopes.Profile,
+                    IdentityServerConstants.StandardScopes.Email
                 }
             },
 
-            // Admin
+            // Admin (değiştirilmedi)
             new Client
             {
                 ClientId = "AdminId",
@@ -95,17 +83,17 @@ namespace  IdentityServer
                 AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
                 ClientSecrets = { new Secret("crmsecret".Sha256()) },
                 AllowedScopes = {
-                    "CustomersReadPermission",  // Müşteri okuma izni
-                    "CustomersWritePermission", // Müşteri yazma izni
-                    "CustomersFilterPermission", // Müşteri filtreleme izni
-                    "UsersReadPermission", // Kullanıcı okuma izni
-                    "UsersWritePermission", // Kullanıcı yazma izni
+                    "customers.read",
+                    "customers.write",
+                    "customers.filter",
+                    "users.read",
+                    "users.write",
                     IdentityServerConstants.LocalApi.ScopeName,
                     IdentityServerConstants.StandardScopes.Email,
                     IdentityServerConstants.StandardScopes.OpenId,
                     IdentityServerConstants.StandardScopes.Profile
                 },
-                AccessTokenLifetime = 600
+                AccessTokenLifetime = 600 // İhtiyaca göre ayarlanabilir
             }
         };
     }

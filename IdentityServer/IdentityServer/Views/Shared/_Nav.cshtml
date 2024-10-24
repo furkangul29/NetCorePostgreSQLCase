@@ -1,33 +1,16 @@
-﻿@using IdentityServer4.Extensions
+﻿@using Duende.IdentityServer
+@inject Duende.IdentityServer.Services.IIdentityServerInteractionService Interaction
 
-@{
-    string name = null;
-    if (!true.Equals(ViewData["signed-out"]))
-    {
-        name = Context.User?.GetDisplayName();
-    }
-}
-
-<div class="nav-page">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-
-        <a href="~/" class="navbar-brand">
-            <img src="~/icon.png" class="icon-banner">
-            IdentityServer4
-        </a>
-
-        @if (!string.IsNullOrWhiteSpace(name))
+<nav>
+    <ul>
+        @if (User.Identity.IsAuthenticated)
         {
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">@name <b class="caret"></b></a>
-                    
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" asp-action="Logout" asp-controller="Account">Logout</a>
-                    </div>
-              </li>
-            </ul>
+            <li>@User.Identity.Name</li>
+            <li><a href="/Account/Logout">Çıkış Yap</a></li>
         }
-    
-    </nav>
-</div>
+        else
+        {
+            <li><a href="/Account/Login">Giriş Yap</a></li>
+        }
+    </ul>
+</nav>

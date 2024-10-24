@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebUI.Interfaces;
+using WebUI.Services.UserServices;
+
 
 namespace WebUI.Controllers
 {

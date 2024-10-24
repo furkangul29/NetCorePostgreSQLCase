@@ -1,6 +1,6 @@
 ﻿using WebUI.DTO.IdentityDtos.UserDtos;
 
-namespace WebUI.UserIdentityServices
+namespace WebUI.Services.UserIdentityServices
 {
     public interface IUserIdentityService
     {

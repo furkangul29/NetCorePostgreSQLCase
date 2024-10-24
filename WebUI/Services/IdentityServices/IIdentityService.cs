@@ -2,7 +2,7 @@
 
 
 
-namespace WebUI.Interfaces
+namespace WebUI.Services.IdentityServices
 {
     public interface IIdentityService
     {

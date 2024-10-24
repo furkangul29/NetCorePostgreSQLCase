@@ -1,4 +1,4 @@
-﻿namespace WebUI.Interfaces
+﻿namespace WebUI.Services.ClientCredentialTokenServices
 {
     public interface IClientCredentialTokenService
     {

@@ -1,7 +1,7 @@
 ﻿
 using System.Net;
 using System.Net.Http.Headers;
-using WebUI.Interfaces;
+using WebUI.Services.ClientCredentialTokenServices;
 
 namespace WebUI.Handlers
 {

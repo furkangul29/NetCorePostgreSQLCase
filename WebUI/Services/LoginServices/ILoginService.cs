@@ -1,4 +1,4 @@
-﻿namespace WebUI.Interfaces
+﻿namespace WebUI.Services.LoginServices
 {
     public interface ILoginService
     {

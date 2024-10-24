@@ -1,10 +1,7 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using WebUI.Services.Concrete;
-using WebUI.Concrete;
 using WebUI.Handlers;
-using WebUI.Interfaces;
-using IdentityServer4.Services;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
@@ -13,7 +10,13 @@ using DataAccessLayer.Concrete;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using BusinessLayer.Abstract;
 using BusinessLayer.Concrete;
-using WebUI.UserIdentityServices;
+using WebUI.Services.ClientCredentialTokenServices;
+using WebUI.Services.IdentityServices;
+using WebUI.Services.LoginServices;
+using WebUI.Services.UserIdentityServices;
+using WebUI.Services.UserServices;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +25,19 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<CRMContext>(options =>
     options.UseNpgsql(connectionString));
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddCookie(JwtBearerDefaults.AuthenticationScheme, opt =>
+
+builder.Services.AddAutoMapper(typeof(GeneralMap));
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // Önemli!
+});
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
 {
     opt.LoginPath = "/Login/Index/";
     opt.LogoutPath = "/Login/LogOut/";
@@ -30,68 +45,63 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddCo
     opt.Cookie.HttpOnly = true;
     opt.Cookie.SameSite = SameSiteMode.Strict;
     opt.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    opt.Cookie.Name = "CrmJwt";
-});
-builder.Services.AddAutoMapper(typeof(GeneralMap));
+    opt.Cookie.Name = "CrmCookie";
+    opt.SlidingExpiration = true;
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.Authority = "http://localhost:3001"; // IdentityServer4 adresi
+    options.RequireHttpsMetadata = false; // Geliştirme ortamı için
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        opt.LoginPath = "/Login/Index/";
-        opt.ExpireTimeSpan = TimeSpan.FromDays(5);
-        opt.Cookie.Name = "CrmCookie";
-        opt.SlidingExpiration = true;
-    });
-
+        ValidateIssuer = true,
+        ValidateAudience = false, // Audience doğrulamasını kapatın
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = "http://localhost:3001", // IdentityServer4 adresi
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("crmsecret"))
+    };
+});
 builder.Services.AddAuthorization(options =>
 {
-    // Users policies
-    options.AddPolicy("UsersReadPolicy", policy =>
+    options.AddPolicy("users.read", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "UsersReadPermission");
+        policy.RequireClaim("scope", "users.read");
     });
 
-    options.AddPolicy("UsersWritePolicy", policy =>
+    options.AddPolicy("users.write", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "UsersWritePermission");
+        policy.RequireClaim("scope", "users.write");
     });
 
-    // Customers policies
-    options.AddPolicy("CustomersReadPolicy", policy =>
+    options.AddPolicy("customers.read", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "CustomersReadPermission");
+        policy.RequireClaim("scope", "customers.read");
     });
 
-    options.AddPolicy("CustomersWritePolicy", policy =>
+    options.AddPolicy("customers.write", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "CustomersWritePermission");
+        policy.RequireClaim("scope", "customers.write");
     });
 
-    // Customers Filter policy (Admin only)
-    options.AddPolicy("CustomersFilterPolicy", policy =>
+    options.AddPolicy("customers.filter", policy =>
     {
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "CustomersFilterPermission");
-    });
-
-    // Local API policy
-    // Local API policy
-    options.AddPolicy("IdentityServerApi", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "IdentityServerApi");
+        policy.RequireClaim("scope", "customers.filter");
     });
 });
 
-// Token y�netimi ve HTTP context
+
+// Token yönetimi ve HTTP context
 builder.Services.AddAccessTokenManagement();
 builder.Services.AddHttpContextAccessor();
 
-// Servis ba��ml�l�klar�
+// Servis baðýmlýlýklarý
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient<IIdentityService, IdentityService>();
 builder.Services.AddHttpClient<IClientCredentialTokenService, ClientCredentialTokenService>();
@@ -100,8 +110,16 @@ builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<IUserIdentityService, UserIdentityService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
 
 builder.Services.AddScoped<ICustomerDal, CustomerDal>();
 builder.Services.AddScoped<IUserDal, UserDal>();
@@ -119,7 +137,7 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Hata y�netimi
+// Hata yönetimi
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -130,7 +148,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseAuthentication(); // Authentication middleware'i Authorization'dan �nce
+app.UseAuthentication(); // Authentication middleware'i Authorization'dan önce
 app.UseAuthorization();
 
 app.MapControllerRoute(

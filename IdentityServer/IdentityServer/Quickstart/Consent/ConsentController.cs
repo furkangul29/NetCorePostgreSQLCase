@@ -1,25 +1,18 @@
-// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-
-using IdentityServer4.Events;
-using IdentityServer4.Models;
-using IdentityServer4.Services;
-using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
-using IdentityServer4.Validation;
 using System.Collections.Generic;
 using System;
+using Duende.IdentityServer.Services;
+using Duende.IdentityServer.Models;
+using Duende.IdentityServer.Events;
+using Duende.IdentityServer.Extensions;
+using Duende.IdentityServer.Validation;
 
 namespace IdentityServerHost.Quickstart.UI
 {
-    /// <summary>
-    /// This controller processes the consent UI
-    /// </summary>
     [SecurityHeaders]
     [Authorize]
     public class ConsentController : Controller
@@ -38,11 +31,6 @@ namespace IdentityServerHost.Quickstart.UI
             _logger = logger;
         }
 
-        /// <summary>
-        /// Shows the consent screen
-        /// </summary>
-        /// <param name="returnUrl"></param>
-        /// <returns></returns>
         [HttpGet]
         public async Task<IActionResult> Index(string returnUrl)
         {
@@ -55,9 +43,6 @@ namespace IdentityServerHost.Quickstart.UI
             return View("Error");
         }
 
-        /// <summary>
-        /// Handles the consent screen postback
-        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(ConsentInputModel model)
@@ -67,10 +52,8 @@ namespace IdentityServerHost.Quickstart.UI
             if (result.IsRedirect)
             {
                 var context = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
-                if (context?.IsNativeClient() == true)
+                if (context?.Client.ClientId != null && context.Client.RequirePkce)
                 {
-                    // The client is native, so this change in how to
-                    // return the response is for better UX for the end user.
                     return this.LoadingPage("Redirect", result.RedirectUri);
                 }
 
@@ -90,37 +73,35 @@ namespace IdentityServerHost.Quickstart.UI
             return View("Error");
         }
 
-        /*****************************************/
-        /* helper APIs for the ConsentController */
-        /*****************************************/
         private async Task<ProcessConsentResult> ProcessConsent(ConsentInputModel model)
         {
             var result = new ProcessConsentResult();
 
-            // validate return url is still valid
             var request = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
             if (request == null) return result;
 
             ConsentResponse grantedConsent = null;
 
-            // user clicked 'no' - send back the standard 'access_denied' response
             if (model?.Button == "no")
             {
-                grantedConsent = new ConsentResponse { Error = AuthorizationError.AccessDenied };
+                grantedConsent = new ConsentResponse
+                {
+                    Error = AuthorizationError.AccessDenied
+                };
 
-                // emit event
-                await _events.RaiseAsync(new ConsentDeniedEvent(User.GetSubjectId(), request.Client.ClientId, request.ValidatedResources.RawScopeValues));
+                await _events.RaiseAsync(new ConsentDeniedEvent(
+                    User.GetSubjectId(),
+                    request.Client.ClientId,
+                    request.ValidatedResources.RawScopeValues));
             }
-            // user clicked 'yes' - validate the data
             else if (model?.Button == "yes")
             {
-                // if the user consented to some scope, build the response model
                 if (model.ScopesConsented != null && model.ScopesConsented.Any())
                 {
                     var scopes = model.ScopesConsented;
                     if (ConsentOptions.EnableOfflineAccess == false)
                     {
-                        scopes = scopes.Where(x => x != IdentityServer4.IdentityServerConstants.StandardScopes.OfflineAccess);
+                        scopes = scopes.Where(x => x != Duende.IdentityServer.IdentityServerConstants.StandardScopes.OfflineAccess);
                     }
 
                     grantedConsent = new ConsentResponse
@@ -130,8 +111,12 @@ namespace IdentityServerHost.Quickstart.UI
                         Description = model.Description
                     };
 
-                    // emit event
-                    await _events.RaiseAsync(new ConsentGrantedEvent(User.GetSubjectId(), request.Client.ClientId, request.ValidatedResources.RawScopeValues, grantedConsent.ScopesValuesConsented, grantedConsent.RememberConsent));
+                    await _events.RaiseAsync(new ConsentGrantedEvent(
+                        User.GetSubjectId(),
+                        request.Client.ClientId,
+                        request.ValidatedResources.RawScopeValues,
+                        grantedConsent.ScopesValuesConsented,
+                        grantedConsent.RememberConsent));
                 }
                 else
                 {
@@ -145,16 +130,21 @@ namespace IdentityServerHost.Quickstart.UI
 
             if (grantedConsent != null)
             {
-                // communicate outcome of consent back to identityserver
                 await _interaction.GrantConsentAsync(request, grantedConsent);
-
-                // indicate that's it ok to redirect back to authorization endpoint
                 result.RedirectUri = model.ReturnUrl;
-                result.Client = request.Client;
+
+                // Manuel dönüþüm yapýlýyor
+                var clientEntity = new Duende.IdentityServer.EntityFramework.Entities.Client
+                {
+                    ClientId = request.Client.ClientId,
+                    ClientName = request.Client.ClientName,
+                    // Diðer alanlarý burada eþleyebilirsiniz
+                };
+
+                result.Client = clientEntity;
             }
             else
             {
-                // we need to redisplay the consent UI
                 result.ViewModel = await BuildViewModelAsync(model.ReturnUrl, model);
             }
 
@@ -185,30 +175,34 @@ namespace IdentityServerHost.Quickstart.UI
                 RememberConsent = model?.RememberConsent ?? true,
                 ScopesConsented = model?.ScopesConsented ?? Enumerable.Empty<string>(),
                 Description = model?.Description,
-
                 ReturnUrl = returnUrl,
-
                 ClientName = request.Client.ClientName ?? request.Client.ClientId,
                 ClientUrl = request.Client.ClientUri,
                 ClientLogoUrl = request.Client.LogoUri,
                 AllowRememberConsent = request.Client.AllowRememberConsent
             };
 
-            vm.IdentityScopes = request.ValidatedResources.Resources.IdentityResources.Select(x => CreateScopeViewModel(x, vm.ScopesConsented.Contains(x.Name) || model == null)).ToArray();
+            vm.IdentityScopes = request.ValidatedResources.Resources.IdentityResources
+                .Select(x => CreateScopeViewModel(x, vm.ScopesConsented.Contains(x.Name) || model == null))
+                .ToArray();
 
             var apiScopes = new List<ScopeViewModel>();
-            foreach(var parsedScope in request.ValidatedResources.ParsedScopes)
+            foreach (var parsedScope in request.ValidatedResources.ParsedScopes)
             {
                 var apiScope = request.ValidatedResources.Resources.FindApiScope(parsedScope.ParsedName);
                 if (apiScope != null)
                 {
-                    var scopeVm = CreateScopeViewModel(parsedScope, apiScope, vm.ScopesConsented.Contains(parsedScope.RawValue) || model == null);
+                    var scopeVm = CreateScopeViewModel(parsedScope, apiScope,
+                        vm.ScopesConsented.Contains(parsedScope.RawValue) || model == null);
                     apiScopes.Add(scopeVm);
                 }
             }
+
             if (ConsentOptions.EnableOfflineAccess && request.ValidatedResources.Resources.OfflineAccess)
             {
-                apiScopes.Add(GetOfflineAccessScope(vm.ScopesConsented.Contains(IdentityServer4.IdentityServerConstants.StandardScopes.OfflineAccess) || model == null));
+                apiScopes.Add(GetOfflineAccessScope(
+                    vm.ScopesConsented.Contains(Duende.IdentityServer.IdentityServerConstants.StandardScopes.OfflineAccess)
+                    || model == null));
             }
             vm.ApiScopes = apiScopes;
 
@@ -251,7 +245,7 @@ namespace IdentityServerHost.Quickstart.UI
         {
             return new ScopeViewModel
             {
-                Value = IdentityServer4.IdentityServerConstants.StandardScopes.OfflineAccess,
+                Value = Duende.IdentityServer.IdentityServerConstants.StandardScopes.OfflineAccess,
                 DisplayName = ConsentOptions.OfflineAccessDisplayName,
                 Description = ConsentOptions.OfflineAccessDescription,
                 Emphasize = true,

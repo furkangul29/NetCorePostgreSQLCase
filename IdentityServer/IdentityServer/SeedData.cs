@@ -9,9 +9,10 @@ using IdentityModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+
 using IdentityServer.Data;
 using IdentityServer.Models;
+using Serilog;
 
 namespace IdentityServer
 {

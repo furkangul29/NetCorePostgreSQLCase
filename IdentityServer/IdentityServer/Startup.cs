@@ -1,9 +1,6 @@
-﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
-
-using IdentityServer.Data;
+﻿using IdentityServer.Data;
 using IdentityServer.Models;
-using IdentityServer4;
+using DataAccessLayer.Services.LogServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +8,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Duende.IdentityServer;
 
 namespace IdentityServer
 {
@@ -27,94 +28,65 @@ namespace IdentityServer
 
         public void ConfigureServices(IServiceCollection services)
         {
-          
             services.AddAuthorization(options =>
             {
-                // Users policies
-                options.AddPolicy("UsersReadPolicy", policy =>
+                options.AddPolicy("users.read", policy =>
                 {
                     policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "UsersReadPermission");
+                    policy.RequireClaim("scope", "users.read");
                 });
 
-                options.AddPolicy("UsersWritePolicy", policy =>
+                options.AddPolicy("users.write", policy =>
                 {
                     policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "UsersWritePermission");
+                    policy.RequireClaim("scope", "users.write");
                 });
 
-                // Customers policies
-                options.AddPolicy("CustomersReadPolicy", policy =>
+                options.AddPolicy("customers.read", policy =>
                 {
                     policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "CustomersReadPermission");
+                    policy.RequireClaim("scope", "customers.read");
                 });
 
-                options.AddPolicy("CustomersWritePolicy", policy =>
+                options.AddPolicy("customers.write", policy =>
                 {
                     policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "CustomersWritePermission");
+                    policy.RequireClaim("scope", "customers.write");
                 });
 
-                // Customers Filter policy (Admin only)
-                options.AddPolicy("CustomersFilterPolicy", policy =>
+                options.AddPolicy("customers.filter", policy =>
                 {
                     policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "CustomersFilterPermission");
-                });
-
-                // Local API policy
-                options.AddPolicy("IdentityServerApi", policy =>
-                {
-                    policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "IdentityServerApi");
+                    policy.RequireClaim("scope", "customers.filter");
                 });
             });
-
-            // Local API authentication ekleniyor
-            services.AddLocalApiAuthentication();
-
             services.AddControllersWithViews();
 
             // Veritabanı bağlantısı
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
 
-            // Identity konfigürasyonu
+            // Identity yapılandırması
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            // IdentityServer konfigürasyonu
+            // IdentityServer4 yapılandırması
             var builder = services.AddIdentityServer(options =>
             {
-                options.Events.RaiseErrorEvents = true;
-                options.Events.RaiseInformationEvents = true;
-                options.Events.RaiseFailureEvents = true;
-                options.Events.RaiseSuccessEvents = true;
-
-                // see https://identityserver4.readthedocs.io/en/latest/topics/resources.html
-                options.EmitStaticAudienceClaim = true;
+                // ... (Diğer IdentityServer seçenekleri)
             })
-                .AddInMemoryIdentityResources(Config.IdentityResources)
-                .AddInMemoryApiResources(Config.ApiResources)
-                .AddInMemoryApiScopes(Config.ApiScopes)
-                .AddInMemoryClients(Config.Clients)
-                .AddAspNetIdentity<ApplicationUser>();
+            .AddInMemoryIdentityResources(Config.IdentityResources)
+            .AddInMemoryApiResources(Config.ApiResources)
+            .AddInMemoryApiScopes(Config.ApiScopes)
+            .AddInMemoryClients(Config.Clients)
+            .AddAspNetIdentity<ApplicationUser>();
 
-            // Production'da kullanılmamalı - anahtar materyalini güvenli bir yerde saklamalısınız
+            // Geliştirme ortamı için
             builder.AddDeveloperSigningCredential();
 
-            // Google authentication ekleniyor
-            services.AddAuthentication()
-                .AddGoogle(options =>
-                {
-                    options.SignInScheme = IdentityServerConstants.ExternalCookieAuthenticationScheme;
-
-                    // Google'da kaydolmanız gerekiyor
-                    options.ClientId = "copy client ID from Google here";
-                    options.ClientSecret = "copy client secret from Google here";
-                });
+            // JWT Bearer kimlik doğrulamasını ekleyin 
+            services.AddJwtBearerAuthentication(Configuration);
         }
 
         public void Configure(IApplicationBuilder app)
@@ -122,17 +94,16 @@ namespace IdentityServer
             if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
             }
 
-            app.UseStaticFiles();
+            // ... (Diğer middleware'ler - loglama, statik dosyalar vb.)
 
             app.UseRouting();
 
-            // IdentityServer middleware'i authentication ve authorization'dan ÖNCE eklenmeli
+            // Önce IdentityServer4 middleware'ini ekleyin
             app.UseIdentityServer();
 
-            // Authentication ve Authorization sırası doğru olmalı
+            // Sonra kimlik doğrulama ve yetkilendirme middleware'lerini ekleyin
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -140,6 +111,36 @@ namespace IdentityServer
             {
                 endpoints.MapDefaultControllerRoute();
             });
+        }
+    }
+
+    // Uzantı metodu (extension method) - IServiceCollection'a eklenir
+    public static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection AddJwtBearerAuthentication(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityServerConstants.DefaultCookieAuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.Authority = "http://localhost:3001"; // IdentityServer adresi
+                options.RequireHttpsMetadata = false; // Geliştirme ortamı için
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = false, // Aynı projede ise false yapın
+                    ValidateAudience = false, // Artık açıkça Audience belirtmiyoruz
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = "http://localhost:3001", // IdentityServer adresi
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("crmsecret"))
+                };
+            });
+
+            return services;
         }
     }
 }

@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.Net;
 using System.Net.Http.Headers;
-using WebUI.Interfaces;
+
+using WebUI.Services.IdentityServices;
 
 namespace WebUI.Handlers
 {
