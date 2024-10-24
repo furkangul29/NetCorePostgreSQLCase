@@ -4,10 +4,8 @@ using WebUI.Services.Concrete;
 using WebUI.Handlers;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
 using DataAccessLayer.Abstract;
 using DataAccessLayer.Concrete;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using BusinessLayer.Abstract;
 using BusinessLayer.Concrete;
 using WebUI.Services.ClientCredentialTokenServices;
@@ -18,6 +16,15 @@ using WebUI.Services.UserServices;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+using Serilog;
+using IdentityServer.Data;
+using IdentityServer.Models;
+using Microsoft.AspNetCore.Identity;
+using System.Configuration;
+
+
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -25,13 +32,33 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<CRMContext>(options =>
     options.UseNpgsql(connectionString));
 
+// ApplicationDbContext'i ekliyoruz, aynı bağlantı dizesini kullanıyoruz
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Identity yapılandırması
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// Log dizinini oluştur
+if (!Directory.Exists("logs"))
+{
+    Directory.CreateDirectory("logs");
+}
+
+// Serilog'u başlat
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Warning()
+
+    .WriteTo.File("logs/app-.log", rollingInterval: RollingInterval.Day) // Dosyaya yaz
+    .CreateLogger();
+
+
+builder.Host.UseSerilog();
 
 builder.Services.AddAutoMapper(typeof(GeneralMap));
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // Önemli!
-});
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -63,6 +90,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("crmsecret"))
     };
 });
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+       .AddEntityFrameworkStores<ApplicationDbContext>()
+       .AddDefaultTokenProviders();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("users.read", policy =>

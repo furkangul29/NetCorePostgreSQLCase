@@ -3,6 +3,8 @@ using BusinessLayer.Abstract;
 using DataAccessLayer.Concrete;
 using DtoLayer.CustomerDtos;
 using EntityLayer;
+using IdentityServer.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebUI.Models;
@@ -15,18 +17,21 @@ namespace WebUI.Controllers
         private readonly ICustomerService _customerService;
         private readonly IMapper _mapper;
         private readonly ILogger<CustomerController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public CustomerController(IHttpClientFactory httpClientFactory, ICustomerService customerService, IMapper mapper, ILogger<CustomerController> logger)
+        public CustomerController(IHttpClientFactory httpClientFactory, ICustomerService customerService, IMapper mapper, ILogger<CustomerController> logger, UserManager<ApplicationUser> userManager)
         {
             _httpClientFactory = httpClientFactory;
             _customerService = customerService;
             _mapper = mapper;
             _logger = logger;
+            _userManager = userManager;
         }
 
         public async Task<IActionResult> Index(string firstNameFilter, string lastNameFilter, string regionFilter, string emailDomainFilter, DateTime? startDate, DateTime? endDate)
         {
-            _logger.LogInformation("Customer list page accessed by user {UserId}", User.Identity?.Name ?? "Anonymous");
+            var user = await _userManager.GetUserAsync(User);
+            _logger.LogWarning("Müşteri listesi sayfasına {KullanıcıAdı} tarafından erişildi.", user.NormalizedUserName ?? "Anonim");
 
             var customers = await _customerService.TGetListAllAsync();
             var model = new FilteredCustomerViewModel
@@ -40,13 +45,13 @@ namespace WebUI.Controllers
                 EndDate = endDate
             };
 
-            _logger.LogInformation("Filters applied: FirstName: {FirstName}, LastName: {LastName}, Region: {Region}, Email: {Email}, StartDate: {StartDate}, EndDate: {EndDate}",
+            _logger.LogWarning("Uygulanan filtreler: Ad: {Ad}, Soyad: {Soyad}, Bölge: {Bölge}, E-posta: {Eposta}, Başlangıç Tarihi: {BaslangicTarihi}, Bitiş Tarihi: {BitisTarihi}",
                 firstNameFilter, lastNameFilter, regionFilter, emailDomainFilter, startDate, endDate);
 
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
                 var filteredCustomers = FilterCustomers(customers, firstNameFilter, lastNameFilter, regionFilter, emailDomainFilter, startDate, endDate);
-                _logger.LogInformation("AJAX request made by user {UserId} with applied filters", User.Identity?.Name ?? "Anonymous");
+                _logger.LogWarning("{KullanıcıAdı} tarafından filtre uygulanmış AJAX isteği yapıldı.", User.Identity?.Name ?? "Anonim");
                 return Json(_mapper.Map<List<ResultCustomerDto>>(filteredCustomers));
             }
 
@@ -76,7 +81,7 @@ namespace WebUI.Controllers
             if (endDate.HasValue)
                 customers = customers.Where(c => c.RegistrationDate.Date <= endDate.Value.Date);
 
-            _logger.LogInformation("Customers filtered with FirstName: {FirstName}, LastName: {LastName}, Region: {Region}, EmailDomain: {EmailDomain}, StartDate: {StartDate}, EndDate: {EndDate}",
+            _logger.LogWarning("Müşteriler şu filtrelere göre listelendi: Ad: {Ad}, Soyad: {Soyad}, Bölge: {Bölge}, Eposta Alan Adı: {EpostaAlanAdi}, Başlangıç Tarihi: {BaslangicTarihi}, Bitiş Tarihi: {BitisTarihi}",
                 firstName, lastName, region, emailDomain, startDate, endDate);
 
             return customers;
@@ -85,7 +90,7 @@ namespace WebUI.Controllers
         [HttpGet]
         public IActionResult CreateCustomer()
         {
-            _logger.LogInformation("Create customer page accessed by user {UserId}", User.Identity?.Name ?? "Anonymous");
+            _logger.LogWarning("Yeni müşteri oluşturma sayfası {KullanıcıAdı} tarafından açıldı.", User.Identity?.Name ?? "Anonim");
             return View();
         }
 
@@ -94,7 +99,7 @@ namespace WebUI.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid model state for creating a customer by user {UserId}", User.Identity?.Name ?? "Anonymous");
+                _logger.LogCritical("Müşteri oluşturulurken geçersiz model durumu. Kullanıcı: {KullanıcıAdı}", User.Identity?.Name ?? "Anonim");
                 return View(createCustomerDto);
             }
 
@@ -102,12 +107,12 @@ namespace WebUI.Controllers
             {
                 var customer = _mapper.Map<Customer>(createCustomerDto);
                 await _customerService.TAddAsync(customer);
-                _logger.LogInformation("Customer created successfully by user {UserId}", User.Identity?.Name ?? "Anonymous");
+                _logger.LogWarning("{KullanıcıAdı} tarafından yeni bir müşteri başarıyla oluşturuldu.", User.Identity?.Name ?? "Anonim");
                 return RedirectToAction("Index", "Customer");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating customer by user {UserId}", User.Identity?.Name ?? "Anonymous");
+                _logger.LogError(ex, "{KullanıcıAdı} tarafından müşteri oluşturulurken hata meydana geldi: {HataMesajı}", User.Identity?.Name ?? "Anonim", ex.Message);
                 ModelState.AddModelError("", $"Müşteri oluşturulurken hata oluştu: {ex.Message}");
                 return View(createCustomerDto);
             }
@@ -116,12 +121,12 @@ namespace WebUI.Controllers
         [HttpGet]
         public async Task<IActionResult> UpdateCustomer(int id)
         {
-            _logger.LogInformation("Update customer page accessed for ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+            _logger.LogWarning("{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşterinin güncelleme sayfası açıldı.", id, User.Identity?.Name ?? "Anonim");
 
             var customer = await _customerService.TGetByIDAsync(id);
             if (customer == null)
             {
-                _logger.LogWarning("Customer not found for ID {CustomerId} accessed by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogCritical("ID'si {MusteriId} olan müşteri bulunamadı. Kullanıcı: {KullanıcıAdı}", id, User.Identity?.Name ?? "Anonim");
                 return NotFound($"Müşteri bulunamadı: ID {id}");
             }
 
@@ -134,7 +139,7 @@ namespace WebUI.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Invalid model state for updating a customer by user {UserId}", User.Identity?.Name ?? "Anonymous");
+                _logger.LogCritical("Müşteri güncellenirken geçersiz model durumu. Kullanıcı: {KullanıcıAdı}", User.Identity?.Name ?? "Anonim");
                 return View(updateCustomerDto);
             }
 
@@ -143,19 +148,19 @@ namespace WebUI.Controllers
                 var existingCustomer = await _customerService.TGetByIDAsync(id);
                 if (existingCustomer == null)
                 {
-                    _logger.LogWarning("Customer not found while attempting to update ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                    _logger.LogCritical("Güncellenmek istenen ID'si {MusteriId} olan müşteri bulunamadı. Kullanıcı: {KullanıcıAdı}", id, User.Identity?.Name ?? "Anonim");
                     ModelState.AddModelError("", "Müşteri bulunamadı.");
                     return View(updateCustomerDto);
                 }
 
                 _mapper.Map(updateCustomerDto, existingCustomer);
                 await _customerService.TUpdateAsync(existingCustomer);
-                _logger.LogInformation("Customer updated successfully for ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogWarning("{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşteri başarıyla güncellendi.", User.Identity?.Name ?? "Anonim", id);
                 return RedirectToAction("Index", "Customer");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while updating customer ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogError(ex, "{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşteri güncellenirken hata meydana geldi: {HataMesajı}", id, User.Identity?.Name ?? "Anonim", ex.Message);
                 ModelState.AddModelError("", $"Müşteri güncellenirken hata oluştu: {ex.Message}");
                 return View(updateCustomerDto);
             }
@@ -166,29 +171,29 @@ namespace WebUI.Controllers
         {
             try
             {
-                _logger.LogInformation("Delete request for customer ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogWarning("ID'si {MusteriId} olan müşteri için silme isteği {KullanıcıAdı} tarafından gönderildi.", id, User.Identity?.Name ?? "Anonim");
 
                 var customer = await _customerService.TGetByIDAsync(id);
                 if (customer == null)
                 {
-                    _logger.LogWarning("Customer not found for deletion attempt ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                    _logger.LogCritical("Silinmek istenen ID'si {MusteriId} olan müşteri bulunamadı. Kullanıcı: {KullanıcıAdı}", id, User.Identity?.Name ?? "Anonim");
                     ModelState.AddModelError("", "Silinmek istenen müşteri bulunamadı.");
                     return RedirectToAction(nameof(Index));
                 }
 
                 await _customerService.TDeleteAsync(customer);
-                _logger.LogInformation("Customer deleted successfully ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogWarning("{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşteri başarıyla silindi.", id, User.Identity?.Name ?? "Anonim");
                 return RedirectToAction("Index", "Customer", new { deleted = "true" });
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogWarning(ex, "Concurrency error while deleting customer ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogCritical(ex, "{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşteri silinirken eşzamanlılık hatası oluştu.", id, User.Identity?.Name ?? "Anonim");
                 ModelState.AddModelError("", "Kayıt güncellenmiş veya silinmiş olabilir. Lütfen tekrar deneyin.");
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while deleting customer ID {CustomerId} by user {UserId}", id, User.Identity?.Name ?? "Anonymous");
+                _logger.LogError(ex, "{KullanıcıAdı} tarafından ID'si {MusteriId} olan müşteri silinirken hata oluştu: {HataMesajı}", id, User.Identity?.Name ?? "Anonim", ex.Message);
                 ModelState.AddModelError("", $"Müşteri silinirken hata oluştu: {ex.Message}");
                 return RedirectToAction(nameof(Index));
             }

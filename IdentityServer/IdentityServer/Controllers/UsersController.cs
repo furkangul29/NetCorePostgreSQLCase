@@ -33,28 +33,28 @@ namespace IdentityServer.Controllers
         [HttpGet("GetUser")]
         public async Task<IActionResult> GetUser()
         {
-            _logger.LogInformation("GetUser method started at {Time}", DateTime.UtcNow);
+            _logger.LogWarning("GetUser method started at {Time}", DateTime.UtcNow);
 
             try
             {
                 var userClaim = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
                 if (userClaim == null)
                 {
-                    _logger.LogWarning("User claim not found at {Time}", DateTime.UtcNow);
+                    _logger.LogCritical("User claim not found at {Time}", DateTime.UtcNow);
                     return Unauthorized("User claim not found.");
                 }
 
                 var user = await _userManager.FindByIdAsync(userClaim.Value);
                 if (user == null)
                 {
-                    _logger.LogWarning("User not found for ID: {UserId} at {Time}", userClaim.Value, DateTime.UtcNow);
+                    _logger.LogCritical("User not found for ID: {UserId} at {Time}", userClaim.Value, DateTime.UtcNow);
                     return NotFound("User not found.");
                 }
 
-                _logger.LogInformation("User found: {UserId} at {Time}", user.Id, DateTime.UtcNow);
+                _logger.LogWarning("User found: {UserId} at {Time}", user.Id, DateTime.UtcNow);
 
                 var roles = await _userManager.GetRolesAsync(user);
-                _logger.LogInformation("Roles fetched for user: {UserId} - Roles: {Roles} at {Time}", user.Id, string.Join(",", roles), DateTime.UtcNow);
+                _logger.LogWarning("Roles fetched for user: {UserId} - Roles: {Roles} at {Time}", user.Id, string.Join(",", roles), DateTime.UtcNow);
 
                 var result = new
                 {
@@ -66,7 +66,7 @@ namespace IdentityServer.Controllers
                     Roles = roles
                 };
 
-                _logger.LogInformation("GetUser method completed successfully at {Time}", DateTime.UtcNow);
+                _logger.LogWarning("GetUser method completed successfully at {Time}", DateTime.UtcNow);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -79,19 +79,19 @@ namespace IdentityServer.Controllers
         [HttpGet("GetAllUserList")]
         public async Task<IActionResult> GetAllUserList()
         {
-            _logger.LogInformation("GetAllUserList method started at {Time}", DateTime.UtcNow);
+            _logger.LogWarning("GetAllUserList method started at {Time}", DateTime.UtcNow);
 
             try
             {
                 var users = await _userManager.Users.ToListAsync();
-                _logger.LogInformation("Fetched {UserCount} users from the database at {Time}", users.Count, DateTime.UtcNow);
+                _logger.LogWarning("Fetched {UserCount} users from the database at {Time}", users.Count, DateTime.UtcNow);
 
                 var userList = new List<object>();
 
                 foreach (var user in users)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
-                    _logger.LogInformation("Roles fetched for user: {UserId} - Roles: {Roles} at {Time}", user.Id, string.Join(",", roles), DateTime.UtcNow);
+                    _logger.LogWarning("Roles fetched for user: {UserId} - Roles: {Roles} at {Time}", user.Id, string.Join(",", roles), DateTime.UtcNow);
 
                     userList.Add(new
                     {
@@ -104,7 +104,7 @@ namespace IdentityServer.Controllers
                     });
                 }
 
-                _logger.LogInformation("GetAllUserList method completed successfully at {Time}", DateTime.UtcNow);
+                _logger.LogWarning("GetAllUserList method completed successfully at {Time}", DateTime.UtcNow);
                 return Ok(userList);
             }
             catch (Exception ex)

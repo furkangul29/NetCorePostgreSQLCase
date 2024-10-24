@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using IdentityServer.Models;
+using EntityLayer;
 
 namespace IdentityServer.Data
 {
@@ -10,7 +11,7 @@ namespace IdentityServer.Data
             : base(options)
         {
         }
-
+        public DbSet<Customer> Customers { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

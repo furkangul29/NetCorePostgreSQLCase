@@ -24,7 +24,7 @@ namespace WebUI.Controllers
         [HttpGet]
         public IActionResult Index()
         {
-            _logger.LogInformation("Login page accessed at {Time}", DateTime.Now);
+            _logger.LogWarning("Giriş sayfasına erişildi. Zaman: {Time}", DateTime.Now);
             return View();
         }
 
@@ -34,27 +34,27 @@ namespace WebUI.Controllers
             try
             {
                 var startTime = DateTime.Now;
-                _logger.LogInformation(
-                    "Login attempt for user: {Username} at {Time}",
+                _logger.LogWarning(
+                    "Kullanıcı: {Username} için giriş denemesi. Zaman: {Time}",
                     signInDto.Username,
                     startTime);
 
                 await _identityService.SignIn(signInDto);
 
-                _logger.LogInformation(
-                    "Successful login for user: {Username}",
+                _logger.LogCritical(
+                    "Kullanıcı: {Username} için başarılı giriş.",
                     signInDto.Username);
 
                 return RedirectToAction("Index", "Customer");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(
+                _logger.LogCritical(
                     ex,
-                    "Failed login attempt for user: {Username}",
+                    "Kullanıcı: {Username} için başarısız giriş denemesi.",
                     signInDto.Username);
 
-                ModelState.AddModelError("", "Login failed. Please try again.");
+                ModelState.AddModelError("", "Giriş başarısız. Lütfen tekrar deneyin.");
                 return View(signInDto);
             }
         }

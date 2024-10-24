@@ -1,6 +1,5 @@
 ﻿using IdentityServer.Data;
 using IdentityServer.Models;
-using DataAccessLayer.Services.LogServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -28,6 +27,9 @@ namespace IdentityServer
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("users.read", policy =>
