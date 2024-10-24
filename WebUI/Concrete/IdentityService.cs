@@ -1,14 +1,16 @@
 ﻿using IdentityModel.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore; // DbContext için gerekli
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using WebUI.DTO.IdentityDtos.LoginDtos;
 using WebUI.Interfaces;
-
 using DataAccessLayer.Context;
+using WebUI.Models;
 
 namespace WebUI.Services.Concrete
 {
@@ -17,14 +19,15 @@ namespace WebUI.Services.Concrete
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConfiguration _configuration;
-        private readonly CRMContext _dbContext; // DbContext'i tanımlayın
+        private readonly CRMContext _dbContext;
 
-        public IdentityService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, CRMContext dbContext)
+        public IdentityService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor,
+            IConfiguration configuration, CRMContext dbContext)
         {
             _httpClient = httpClient;
             _httpContextAccessor = httpContextAccessor;
             _configuration = configuration;
-            _dbContext = dbContext; // DbContext'i başlatın
+            _dbContext = dbContext;
         }
 
         public async Task<bool> GetRefreshToken()
@@ -32,22 +35,22 @@ namespace WebUI.Services.Concrete
             var discoveryEndPoint = await _httpClient.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
             {
                 Address = _configuration["IdentityServer:IdentityServerUrl"],
-                Policy = new DiscoveryPolicy
-                {
-                    RequireHttps = false
-                }
+                Policy = new DiscoveryPolicy { RequireHttps = false }
             });
 
-            var refreshToken = await _httpContextAccessor.HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
-            var userRole = GetUserRole(); // Kullanıcının rolünü al
-
-            if (string.IsNullOrEmpty(userRole))
+            if (discoveryEndPoint.IsError)
             {
-                // Rol yoksa varsayılan bir rol kullanın veya hata işleyin
-                userRole = "DefaultRole";
+                throw new Exception($"Discovery endpoint error: {discoveryEndPoint.Error}");
             }
 
-            var clientSettings = GetClientSettingsByRole(userRole); // Rolüne göre istemci bilgilerini al
+            var refreshToken = await _httpContextAccessor.HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return false;
+            }
+
+            var userRole = GetUserRole();
+            var clientSettings = GetClientSettingsByRole(userRole ?? "DefaultRole");
 
             var refreshTokenRequest = new RefreshTokenRequest
             {
@@ -58,6 +61,15 @@ namespace WebUI.Services.Concrete
             };
 
             var token = await _httpClient.RequestRefreshTokenAsync(refreshTokenRequest);
+
+            if (token.IsError)
+            {
+                throw new Exception($"Refresh token error: {token.Error}");
+            }
+
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token.AccessToken);
+            var scopes = jwtToken.Claims.Where(c => c.Type == "scope").Select(c => c.Value).ToList();
 
             var authenticationToken = new List<AuthenticationToken>
             {
@@ -82,109 +94,165 @@ namespace WebUI.Services.Concrete
             var properties = result.Properties;
             properties.StoreTokens(authenticationToken);
 
-            await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal, properties);
+            var newClaims = result.Principal.Claims.Where(c => c.Type != "scope").ToList();
+            foreach (var scope in scopes)
+            {
+                newClaims.Add(new Claim("scope", scope));
+            }
+
+            var claimsIdentity = new ClaimsIdentity(newClaims, CookieAuthenticationDefaults.AuthenticationScheme, "name", "role");
+            var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+            await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal, properties);
 
             return true;
+        }
+
+        private async Task<string> GetUserScopesFromDatabase(string username)
+        {
+            var userScopes = await _dbContext.AspNetUsers
+                .Where(u => u.UserName == username)
+                .Join(_dbContext.AspNetUserClaims,
+                    user => user.Id,
+                    claim => claim.UserId,
+                    (user, claim) => new { user, claim })
+                .Where(x => x.claim.ClaimType == "scope")
+                .Select(x => x.claim.ClaimValue)
+                .ToListAsync();
+
+            // Standart OpenID Connect scope'larını ekle
+            var standardScopes = new[]
+            {
+                "openid",
+                "profile",
+                "email",
+                "api1"  // IdentityServerConstants.LocalApi.ScopeName
+            };
+
+            // Tüm scope'ları birleştir
+            var allScopes = standardScopes.Concat(userScopes);
+            return string.Join(" ", allScopes);
         }
 
         public async Task<bool> SignIn(SignInDto signInDto)
         {
-            var discoveryEndPoint = await _httpClient.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+            try
             {
-                Address = _configuration["IdentityServer:IdentityServerUrl"],
-                Policy = new DiscoveryPolicy { RequireHttps = false }
-            });
+                var discoveryEndPoint = await _httpClient.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
+                {
+                    Address = _configuration["IdentityServer:IdentityServerUrl"],
+                    Policy = new DiscoveryPolicy { RequireHttps = false }
+                });
 
-            // Önce kullanıcının rolünü al
-            var userRole = await _dbContext.AspNetUsers
-                .Where(u => u.UserName == signInDto.Username)
-                .Join(_dbContext.AspNetUserRoles,
-                    user => user.Id,
-                    userRole => userRole.UserId,
-                    (user, userRole) => userRole.RoleId)
-                .Join(_dbContext.AspNetRoles,
-                    userRoleId => userRoleId,
-                    role => role.Id,
-                    (userRoleId, role) => role.Name)
-                .FirstOrDefaultAsync();
+                if (discoveryEndPoint.IsError)
+                {
+                    throw new Exception($"Discovery endpoint error: {discoveryEndPoint.Error}");
+                }
 
-            // Role göre client settings al
-            var clientSettings = GetClientSettingsByRole(userRole ?? "DefaultRole");
+                var userRole = await _dbContext.AspNetUsers
+                    .Where(u => u.UserName == signInDto.Username)
+                    .Join(_dbContext.AspNetUserRoles,
+                        user => user.Id,
+                        userRole => userRole.UserId,
+                        (user, userRole) => userRole.RoleId)
+                    .Join(_dbContext.AspNetRoles,
+                        userRoleId => userRoleId,
+                        role => role.Id,
+                        (userRoleId, role) => role.Name)
+                    .FirstOrDefaultAsync();
 
-            // Doğru client bilgileriyle token isteği yap
-            var passwordTokenRequest = new PasswordTokenRequest
+                var clientSettings = GetClientSettingsByRole(userRole ?? "DefaultRole");
+
+                // Veritabanından kullanıcının scope'larını al
+                var scopes = await GetUserScopesFromDatabase(signInDto.Username);
+
+                var passwordTokenRequest = new PasswordTokenRequest
+                {
+                    ClientId = clientSettings.ClientId,
+                    ClientSecret = clientSettings.ClientSecret,
+                    UserName = signInDto.Username,
+                    Password = signInDto.Password,
+                    Address = discoveryEndPoint.TokenEndpoint,
+                    Scope = scopes
+                };
+
+                var token = await _httpClient.RequestPasswordTokenAsync(passwordTokenRequest);
+
+                if (token.IsError)
+                {
+                    throw new Exception($"Token request error: {token.Error}");
+                }
+
+                var userInfoRequest = new UserInfoRequest
+                {
+                    Token = token.AccessToken,
+                    Address = discoveryEndPoint.UserInfoEndpoint
+                };
+
+                var userValues = await _httpClient.GetUserInfoAsync(userInfoRequest);
+
+                if (userValues.IsError)
+                {
+                    throw new Exception($"User info request error: {userValues.Error}");
+                }
+
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token.AccessToken);
+                var tokenScopes = jwtToken.Claims.Where(c => c.Type == "scope").Select(c => c.Value).ToList();
+
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, userValues.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? ""),
+                    new Claim(ClaimTypes.Name, userValues.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? ""),
+                    new Claim(ClaimTypes.Email, userValues.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? ""),
+                    new Claim(ClaimTypes.Role, userRole ?? "DefaultRole")
+                };
+
+                foreach (var scope in tokenScopes)
+                {
+                    claims.Add(new Claim("scope", scope));
+                }
+
+                var authenticationProperties = new AuthenticationProperties();
+                authenticationProperties.StoreTokens(new List<AuthenticationToken>
+                {
+                    new AuthenticationToken
+                    {
+                        Name = OpenIdConnectParameterNames.AccessToken,
+                        Value = token.AccessToken
+                    },
+                    new AuthenticationToken
+                    {
+                        Name = OpenIdConnectParameterNames.RefreshToken,
+                        Value = token.RefreshToken
+                    },
+                    new AuthenticationToken
+                    {
+                        Name = OpenIdConnectParameterNames.ExpiresIn,
+                        Value = DateTime.Now.AddSeconds(token.ExpiresIn).ToString()
+                    }
+                });
+
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme, "name", "role");
+                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+                authenticationProperties.IsPersistent = false;
+
+                await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal, authenticationProperties);
+
+                return true;
+            }
+            catch (Exception)
             {
-                ClientId = clientSettings.ClientId,
-                ClientSecret = clientSettings.ClientSecret,
-                UserName = signInDto.Username,
-                Password = signInDto.Password,
-                Address = discoveryEndPoint.TokenEndpoint
-            };
-
-            var token = await _httpClient.RequestPasswordTokenAsync(passwordTokenRequest);
-
-            if (token.IsError)
-            {
-                // Hata işleme
                 return false;
             }
-
-            var userInfoRequest = new UserInfoRequest
-            {
-                Token = token.AccessToken,
-                Address = discoveryEndPoint.UserInfoEndpoint
-            };
-
-            var userValues = await _httpClient.GetUserInfoAsync(userInfoRequest);
-            var userId = userValues.Claims.FirstOrDefault(c => c.Type == "sub")?.Value; // Kullanıcı ID'sini al
-
-
-            var authenticationProperties = new AuthenticationProperties();
-            authenticationProperties.StoreTokens(new List<AuthenticationToken>
-            {
-                new AuthenticationToken
-                {
-                    Name = OpenIdConnectParameterNames.AccessToken,
-                    Value = token.AccessToken
-                },
-                new AuthenticationToken
-                {
-                    Name = OpenIdConnectParameterNames.RefreshToken,
-                    Value = token.RefreshToken
-                },
-                new AuthenticationToken
-                {
-                    Name = OpenIdConnectParameterNames.ExpiresIn,
-                    Value = DateTime.Now.AddSeconds(token.ExpiresIn).ToString()
-                }
-            });
-
-            // Claims oluşturma ve giriş yapma
-            var claims = new List<Claim>
-{
-    new Claim(ClaimTypes.Name, userValues.Claims.FirstOrDefault(c => c.Type == "name")?.Value),
-    new Claim(ClaimTypes.Role, userRole ?? "DefaultRole") // userRole string olduğu için doğrudan kullanıyoruz
-};
-
-
-            ClaimsIdentity claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme, "name", "role");
-            ClaimsPrincipal claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
-            authenticationProperties.IsPersistent = false;
-
-            await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal, authenticationProperties);
-
-            return true;
         }
-
         private string GetUserRole()
         {
-            // _httpContextAccessor.HttpContext.User kullanarak rolü alın
-            return _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Role);
+            return _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Role);
         }
 
         private (string ClientId, string ClientSecret) GetClientSettingsByRole(string role)
         {
-            // Rolüne göre uygun istemci bilgilerini döndür
             return role switch
             {
                 "Admin" => (

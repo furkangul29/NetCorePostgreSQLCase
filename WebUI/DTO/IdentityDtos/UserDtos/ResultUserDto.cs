@@ -12,6 +12,7 @@ namespace WebUI.DTO.IdentityDtos.UserDtos
         public string surname { get; set; }
         public string id { get; set; }
         public string userName { get; set; }
+        public string Role { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
         public string normalizedUserName { get; set; }

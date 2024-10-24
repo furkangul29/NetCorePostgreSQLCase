@@ -1,53 +1,102 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Newtonsoft.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Net.Http.Headers;
 using System.Net.Http.Headers;
-using WebUI.Interfaces;
-using WebUI.Models;
+using System.Net.Http.Json;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
-namespace WebUI.Concrete
+public class UserService : IUserService
 {
-    public class UserService : IUserService
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(
+        IHttpClientFactory httpClientFactory,
+        IHttpContextAccessor httpContextAccessor,
+        IConfiguration configuration,
+        ILogger<UserService> logger)
     {
-        private readonly HttpClient _httpClient;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-
-        public UserService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
-        {
-            _httpClient = httpClient;
-            _httpContextAccessor = httpContextAccessor;
-        }
-
-        public async Task<UserDetailViewModel> GetUserInfo()
-        {
-            var accessToken = await _httpContextAccessor.HttpContext.GetTokenAsync("access_token");
-
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                throw new Exception("Access token not found");
-            }
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-            var response = await _httpClient.GetAsync("http://localhost:3001/api/users/getuser");
-            var responseContent = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Response Content: {responseContent}"); // API yanıtını logla
-
-            if (response.IsSuccessStatusCode)
-            {
-                var userDetail = await response.Content.ReadFromJsonAsync<UserDetailViewModel>();
-                if (userDetail == null)
-                {
-                    throw new Exception("Received null response from API");
-                }
-                return userDetail;
-            }
-
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Error Details: {error}"); // Hata detaylarını konsola yazdır
-            throw new Exception($"Failed to get user info. Status: {response.StatusCode}, Error: {error}");
-        }
-
-
-
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    public async Task<UserDetail> GetUserInfo()
+    {
+        try
+        {
+            var accessToken = await _httpContextAccessor.HttpContext?.GetTokenAsync(OpenIdConnectParameterNames.AccessToken)
+                ?? throw new UnauthorizedException("Access token not found");
+
+            using var httpClient = _httpClientFactory.CreateClient();
+
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            httpClient.DefaultRequestHeaders.Accept.Clear();
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var identityServerUrl = _configuration["IdentityServer:IdentityServerUrl"]
+                ?? throw new ConfigurationException("IdentityServer URL not configured");
+
+            var response = await httpClient.GetAsync($"{identityServerUrl}/api/users/getuser");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to get user info. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, error);
+                throw new ApiException($"Failed to get user info. Status: {response.StatusCode}", error);
+            }
+
+            var userDetail = await response.Content.ReadFromJsonAsync<UserDetail>();
+            return userDetail ?? throw new ApiException("Received null response from API");
+        }
+        catch (Exception ex) when (ex is not UnauthorizedException
+                                    && ex is not ConfigurationException
+                                    && ex is not ApiException)
+        {
+            _logger.LogError(ex, "Unexpected error while getting user info");
+            throw new ApiException("An unexpected error occurred while getting user information", ex);
+        }
+    }
+}
+
+// Custom exceptions
+public class UnauthorizedException : Exception
+{
+    public UnauthorizedException(string message) : base(message) { }
+}
+
+public class ConfigurationException : Exception
+{
+    public ConfigurationException(string message) : base(message) { }
+}
+
+public class ApiException : Exception
+{
+    public string? ApiError { get; }
+
+    public ApiException(string message, string? apiError = null) : base(message)
+    {
+        ApiError = apiError;
+    }
+
+    public ApiException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+// Interface
+public interface IUserService
+{
+    Task<UserDetail> GetUserInfo();
+}
+
+// User detail model (adjust properties as needed)
+public class UserDetail
+{
+    public string Id { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    // Add other properties as needed
 }

@@ -12,6 +12,6 @@ namespace DtoLayer.CustomerDtos
         public string LastName { get; set; }
         public string Email { get; set; }
         public string Region { get; set; }
-        public DateTime RegistrationDate { get; set; } = DateTime.Now;
+        public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
     }
 }

@@ -7,6 +7,13 @@ using WebUI.Interfaces;
 using IdentityServer4.Services;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper;
+using DataAccessLayer.Abstract;
+using DataAccessLayer.Concrete;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using BusinessLayer.Abstract;
+using BusinessLayer.Concrete;
+using WebUI.UserIdentityServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +22,6 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<CRMContext>(options =>
     options.UseNpgsql(connectionString));
 
-// JWT ve Cookie Authentication - Orijinal haliyle býrakýldý
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddCookie(JwtBearerDefaults.AuthenticationScheme, opt =>
 {
     opt.LoginPath = "/Login/Index/";
@@ -26,6 +32,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddCo
     opt.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     opt.Cookie.Name = "CrmJwt";
 });
+builder.Services.AddAutoMapper(typeof(GeneralMap));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
@@ -88,8 +95,17 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient<IIdentityService, IdentityService>();
 builder.Services.AddHttpClient<IClientCredentialTokenService, ClientCredentialTokenService>();
-builder.Services.AddHttpClient<IUserService, UserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<ICustomerService, CustomerManager>();
+builder.Services.AddScoped<IUserIdentityService, UserIdentityService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+
+
+
+builder.Services.AddScoped<ICustomerDal, CustomerDal>();
+builder.Services.AddScoped<IUserDal, UserDal>();
+
 
 // Token Handler'lar
 builder.Services.AddScoped<ResourceOwnerPasswordTokenHandler>();

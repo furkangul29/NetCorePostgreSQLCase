@@ -1,12 +1,8 @@
 ﻿using DataAccessLayer.Abstract;
-using DataAccessLayer.Concrete;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace DataAccessLayer.Repositories
@@ -14,41 +10,40 @@ namespace DataAccessLayer.Repositories
     public class GenericRepository<T> : IGenericDal<T> where T : class
     {
         private readonly CRMContext _crmContext;
+        private readonly DbSet<T> _dbSet;
 
         public GenericRepository(CRMContext crmContext)
         {
             _crmContext = crmContext;
+            _dbSet = crmContext.Set<T>(); // DbSet'i al
         }
 
-        public void Add(T entity)
+        public async Task AddAsync(T entity)
         {
-            _crmContext.Add(entity);
-            _crmContext.SaveChanges();
+            await _dbSet.AddAsync(entity); // Varlığı asenkron olarak ekle
+            await _crmContext.SaveChangesAsync(); // Değişiklikleri kaydet
         }
 
-        public void Delete(T entity)
+        public async Task DeleteAsync(T entity)
         {
-            _crmContext.Remove(entity);
-            _crmContext.SaveChanges();
+            _dbSet.Remove(entity); // Varlığı sil
+            await _crmContext.SaveChangesAsync(); // Değişiklikleri kaydet
         }
 
-
-        public T GetbyID(int ID)
+        public async Task<T> GetByIDAsync(int id)
         {
-            var values= _crmContext.Set<T>().Find(ID);
-            return values;
+            return await _dbSet.FindAsync(id); // ID'ye göre varlığı bul
         }
 
-        public List<T> GetListAll()
+        public async Task<List<T>> GetListAllAsync()
         {
-           var values= _crmContext.Set<T>().ToList();
-            return values;
+            return await _dbSet.ToListAsync(); // Tüm varlıkları listele
         }
 
-        public void Update(T entity)
+        public async Task UpdateAsync(T entity)
         {
-            _crmContext.Update(entity);
-            _crmContext.SaveChanges();
+            _dbSet.Update(entity); // Varlığı güncelle
+            await _crmContext.SaveChangesAsync(); // Değişiklikleri kaydet
         }
     }
 }

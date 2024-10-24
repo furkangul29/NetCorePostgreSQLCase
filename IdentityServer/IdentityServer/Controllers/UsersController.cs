@@ -13,10 +13,11 @@ using static IdentityServer4.IdentityServerConstants;
 
 namespace IdentityServer.Controllers
 {
-    [Authorize(LocalApi.PolicyName)]
+    //[Authorize(LocalApi.PolicyName)]
     //[Authorize(Roles = "Admin")]
     //[Authorize(AuthenticationSchemes = IdentityServerConstants.LocalApi.AuthenticationScheme)]
-    //[Authorize(Policy ="UsersReadPolicy")]
+    [Authorize(Policy = "UsersReadPolicy")]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
