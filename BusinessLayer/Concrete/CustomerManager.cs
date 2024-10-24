@@ -18,31 +18,34 @@ namespace BusinessLayer.Concrete
             _customerDal = customerDal;
         }
 
-        public void TAdd(Customer entity)
+        public Task TAddAsync(Customer entity)
         {
-            _customerDal.Add(entity);
-        }
-
-        public void TDelete(Customer entity)
-        {
-            _customerDal.Delete(entity);
-        }
-
-        public Customer TGetbyID(int ID)
-        {
-           var values= _customerDal.GetbyID(ID);
+           var values = _customerDal.AddAsync(entity);
             return values;
         }
 
-        public List<Customer> TGetListAll()
+        public Task TDeleteAsync(Customer entity)
         {
-            var values = _customerDal.GetListAll();
+            var values = _customerDal.DeleteAsync(entity);
             return values;
         }
 
-        public void TUpdate(Customer entity)
+        public Task<Customer> TGetByIDAsync(int id)
         {
-            _customerDal.Update(entity);
+            var values = _customerDal.GetByIDAsync(id);
+            return values;
+        }
+
+        public Task<List<Customer>> TGetListAllAsync()
+        {
+            var values = _customerDal.GetListAllAsync();
+            return values;
+        }
+
+        public Task TUpdateAsync(Customer entity)
+        {
+            var values = _customerDal.UpdateAsync(entity);
+            return values;
         }
     }
 }

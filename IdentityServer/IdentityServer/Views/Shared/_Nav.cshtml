@@ -1,0 +1,16 @@
+﻿@using Duende.IdentityServer
+@inject Duende.IdentityServer.Services.IIdentityServerInteractionService Interaction
+
+<nav>
+    <ul>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <li>@User.Identity.Name</li>
+            <li><a href="/Account/Logout">Çıkış Yap</a></li>
+        }
+        else
+        {
+            <li><a href="/Account/Login">Giriş Yap</a></li>
+        }
+    </ul>
+</nav>

@@ -13,6 +13,7 @@ public class GeneralMap : Profile
         CreateMap<CreateCustomerDto, Customer>();
 
         CreateMap<UpdateCustomerDto, Customer>();
+        CreateMap<Customer, UpdateCustomerDto>(); // Burayı ekledik
 
         //User Sınıfı icin
         CreateMap<User, ResultUserDto>();
@@ -20,6 +21,8 @@ public class GeneralMap : Profile
         CreateMap<CreateUserDto, User>();
 
         CreateMap<UpdateUserDto, User>();
-        
+     
+
+
     }
 }

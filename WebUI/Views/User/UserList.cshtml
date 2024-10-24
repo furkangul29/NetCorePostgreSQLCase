@@ -1,0 +1,136 @@
+﻿@model List<WebUI.DTO.IdentityDtos.UserDtos.ResultUserDto>
+@{
+    ViewData["Title"] = "User List";
+    Layout = "~/Views/UILayout/Index.cshtml";
+    int count = 0;
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    .table-container {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 20px;
+        overflow-x: auto;
+        margin-top: 20px;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        position: relative;
+        cursor: pointer;
+        padding: 12px 15px;
+    }
+
+    .table td {
+        vertical-align: middle;
+        padding: 12px 15px;
+    }
+
+    .btn-delete {
+        color: #dc3545;
+        border: 1px solid #dc3545;
+        padding: 5px 10px;
+        transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-edit {
+        color: #198754;
+        border: 1px solid #198754;
+        padding: 5px 10px;
+        transition: all 0.2s;
+        margin-left: 8px;
+    }
+
+    .btn-edit:hover {
+        background: #198754;
+        color: white;
+    }
+
+    .date-cell {
+        white-space: nowrap;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    .role-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        font-size: 0.85em;
+        color: #495057;
+    }
+</style>
+
+<section class="content container-fluid">
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-hashtag me-2"></i>No</th>
+                    <th><i class="fas fa-id-card me-2"></i>ID</th>
+                    <th><i class="fas fa-user me-2"></i>Username</th>
+                    <th><i class="fas fa-key me-2"></i>Password Hash</th>
+                    <th><i class="fas fa-user-tag me-2"></i>Role</th>
+                    <th><i class="fas fa-clock me-2"></i>Created At</th>
+                    <th><i class="fas fa-edit me-2"></i>Updated At</th>
+                    <th><i class="fas fa-tools me-2"></i>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    count++;
+                    <tr>
+                        <td>@count</td>
+                        <td>@item.id</td>
+                        <td>@item.userName</td>
+                        <td>
+                            <span class="text-muted" style="font-family: monospace; font-size: 0.85em;">
+                                @(item.passwordHash?.Substring(0, 20))...
+                            </span>
+                        </td>
+                        <td>
+                            <span class="role-badge">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                @item.Role
+                            </span>
+                        </td>
+                        <td class="date-cell">
+                            @item.CreatedAt.ToString("dd-MM-yyyy HH:mm")
+                        </td>
+                        <td class="date-cell">
+                            @(item.UpdatedAt?.ToString("dd-MM-yyyy HH:mm") ?? "-")
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-delete" onclick="deleteUser('@item.id')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <a href="/Admin/User/Edit/@item.id" class="btn btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-users-slash me-2"></i>
+                            No users found
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

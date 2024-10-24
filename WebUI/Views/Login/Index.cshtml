@@ -1,0 +1,50 @@
+﻿@model CreateLoginDto
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>CRM Giriş Sayfası</title>
+
+    <!-- Font and Style -->
+    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
+    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
+    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css">
+</head>
+
+<body class="form-v4">
+    <div class="page-content">
+        <div class="form-v4-content">
+            <div class="form-left">
+                <h2>CRM Projesi</h2>
+                <p class="text-1">CRM sistemimize giriş yaparak müşteri yönetimi, satış süreçleri ve müşteri destek işlemlerini gerçekleştirebilirsiniz.</p>
+                <p class="text-2">Oturum açarak satış raporlarına, müşteri listelerine ve CRM araçlarına erişim sağlayabilirsiniz. Eğer henüz bir hesabınız yoksa kayıt olabilirsiniz.</p>
+            </div>
+
+            <form class="form-detail" method="post">
+                <h2>CRM Giriş Formu</h2>
+                <div class="form-row">
+                    <label for="username">Kullanıcı Adı</label>
+                    <input type="text" id="username" asp-for="Username" class="input-text" required>
+                </div>
+                <div class="form-row">
+                    <label for="password">Şifre</label>
+                    <input type="password" id="password" asp-for="Password" class="input-text" required>
+                </div>
+                <div class="form-row-last">
+                    <button type="submit" class="register" style="height:35px">Giriş Yap</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JQuery and Validation -->
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
+</body>
+</html>

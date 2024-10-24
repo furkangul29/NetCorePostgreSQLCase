@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiShop Admin Paneli</title>
+    <!-- Font Awesome CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .main-sidebar {
+            width: 230px; /* Genişlik sabit kaldı */
+            background-color: #ffffff;
+            color: #333;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar {
+            padding: 20px 0;
+        }
+
+        .user-panel {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+            .user-panel img {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+
+            .user-panel .info {
+                padding-left: 15px;
+            }
+
+            .user-panel p {
+                margin: 5px 0;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .user-panel a {
+                color: #4CAF50;
+                text-decoration: none;
+                font-size: 0.9em;
+            }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+            .sidebar-menu li {
+                margin-bottom: 5px;
+            }
+
+            .sidebar-menu a {
+                display: flex;
+                align-items: center;
+                padding: 12px 20px;
+                color: #333;
+                text-decoration: none;
+                transition: all 0.3s ease;
+                border-left: 4px solid transparent;
+            }
+
+                .sidebar-menu a:hover {
+                    background-color: #f8f9fa;
+                    border-left-color: #4CAF50;
+                }
+
+            .sidebar-menu i {
+                margin-right: 15px;
+                font-size: 1.6em;
+                color: #4CAF50;
+                transition: all 0.3s ease;
+            }
+
+            .sidebar-menu a:hover i {
+                transform: scale(1.2);
+            }
+
+        .header {
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 15px 20px;
+            background-color: #f1f3f5;
+            color: #6c757d;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .fas {
+            text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <aside class="main-sidebar">
+        <section class="sidebar">
+            <div class="user-panel">
+                <div class="pull-left image">
+                    <img src="https://img.freepik.com/free-vector/young-man-workplace_24877-52694.jpg?t=st=1709037229~exp=1709040829~hmac=5a8212a0aafb4f4665b0af6bc85f732d52ef8391f1a5fc3d4f6089429242c292&w=1060"
+                         alt="User Image">
+                </div>
+                <div class="pull-left info">
+                    <p>MultiShop Admin</p>
+                    <a href="#"><i class="fas fa-circle" style="color: green;"></i> Çevrimiçi</a>
+                </div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="header">Menü</li>
+                <li><a href="#"><i class="fas fa-home"></i><span> Dashboard</span></a></li>
+                <li><a href="/Admin/Category/Index/"><i class="fas fa-th-large"></i><span> Kategoriler</span></a></li>
+                <li><a href="/Admin/Product/ProductListWithCategory/"><i class="fas fa-box"></i><span> Ürünler</span></a></li>
+                <li><a href="/Default/Index/"><i class="fas fa-store"></i><span> Siteye Git</span></a></li>
+                <li><a href="/Admin/SpecialOffer/Index/"><i class="fas fa-gift"></i><span> Özel Teklifler</span></a></li>
+                <li><a href="/Admin/FeatureSlider/Index/"><i class="fas fa-sliders-h"></i><span> Slider Paneli</span></a></li>
+                <li><a href="/Admin/Feature/Index/"><i class="fas fa-star"></i><span> Öne Çıkan Alan Paneli</span></a></li>
+                <li><a href="/Admin/OfferDiscount/Index/"><i class="fas fa-percent"></i><span> İndirim Teklifleri</span></a></li>
+                <li><a href="/Admin/Brand/Index/"><i class="fas fa-trademark"></i><span> Markalar</span></a></li>
+                <li><a href="/Admin/About/Index/"><i class="fas fa-info-circle"></i><span> Hakkımızda</span></a></li>
+                <li><a href="/Admin/Comment/Index/"><i class="fas fa-comments"></i><span> Yorumlar</span></a></li>
+                <li><a href="/Admin/User/UserList/"><i class="fas fa-users"></i><span> Kullanıcı Listesi</span></a></li>
+                <li><a href="#"><i class="fas fa-shopping-basket"></i><span> Sipariş Listesi</span></a></li>
+                <li><a href="#"><i class="fas fa-cash-register"></i><span> Kasa Bilgileri</span></a></li>
+                <li><a href="#"><i class="fas fa-chart-pie"></i><span> İstatistikler</span></a></li>
+                <li><a href="/Admin/Cargo/CargoCompanyList/"><i class="fas fa-truck"></i><span> Kargo</span></a></li>
+                <li><a href="#"><i class="fas fa-images"></i><span> Görseller</span></a></li>
+                <li><a href="#"><i class="fas fa-envelope"></i><span> Mesajlar</span></a></li>
+                <li><a href="#"><i class="fas fa-cog"></i><span> Ayarlar</span></a></li>
+                <li><a href="#"><i class="fas fa-sign-out-alt"></i><span> Çıkış Yap</span></a></li>
+            </ul>
+        </section>
+    </aside>
+</body>
+</html>

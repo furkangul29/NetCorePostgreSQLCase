@@ -1,0 +1,492 @@
+﻿@model FilteredCustomerViewModel
+@{
+    Layout = "~/Views/UILayout/Index.cshtml";
+    ViewData["Title"] = "Customer List";
+    int count = 0;
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    .filter-section {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .filter-header {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s;
+    }
+
+    .filter-header:hover {
+        background: #e9ecef;
+    }
+
+    .filter-content {
+        padding: 20px;
+        display: none;
+    }
+
+    .filter-content.show {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .filter-group {
+        position: relative;
+    }
+
+    .filter-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+    }
+
+    .filter-input {
+        padding-left: 35px;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        height: 38px;
+        width: 100%;
+        transition: all 0.2s;
+    }
+
+    .filter-input:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.15);
+    }
+
+    .btn-reset {
+        background: #dc3545;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 5px;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+        background: #c82333;
+        transform: translateY(-1px);
+    }
+
+    .table-container {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 20px;
+        overflow-x: auto;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        position: relative;
+        cursor: pointer;
+        padding-right: 25px !important;
+    }
+
+    .table th::after {
+        content: '\f0dc';
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        position: absolute;
+        right: 8px;
+        color: #adb5bd;
+    }
+
+    .table th.asc::after {
+        content: '\f0de';
+        color: #0d6efd;
+    }
+
+    .table th.desc::after {
+        content: '\f0dd';
+        color: #0d6efd;
+    }
+
+    .btn-delete {
+        color: #dc3545;
+        border: 1px solid #dc3545;
+        padding: 5px 10px;
+        transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-edit {
+        color: #198754;
+        border: 1px solid #198754;
+        padding: 5px 10px;
+        transition: all 0.2s;
+    }
+
+    .btn-edit:hover {
+        background: #198754;
+        color: white;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<section class="content container-fluid">
+    <div class="filter-section">
+        <div class="filter-header" id="filterToggle">
+            <h5 class="mb-0">
+                <i class="fas fa-filter me-2"></i>
+                Filtreleme Seçenekleri
+            </h5>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="filter-content" id="filterContent">
+            <form id="filterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <i class="fas fa-user filter-icon"></i>
+                        <input type="text" id="firstNameFilter" name="firstNameFilter" 
+                            class="filter-input" value="@Model.FirstNameFilter" 
+                            placeholder="Ad ile filtrele..." />
+                    </div>
+                    <div class="filter-group">
+                        <i class="fas fa-user-tag filter-icon"></i>
+                        <input type="text" id="lastNameFilter" name="lastNameFilter" 
+                            class="filter-input" value="@Model.LastNameFilter" 
+                            placeholder="Soyad ile filtrele..." />
+                    </div>
+                    <div class="filter-group">
+                        <i class="fas fa-city filter-icon"></i>
+                        <input type="text" id="regionFilter" name="regionFilter" 
+                            class="filter-input" value="@Model.RegionFilter" 
+                            placeholder="Şehir ile filtrele..." />
+                    </div>
+                    <div class="filter-group">
+                        <i class="fas fa-at filter-icon"></i>
+                        <input type="text" id="emailDomainFilter" name="emailDomainFilter" 
+                            class="filter-input" value="@Model.EmailFilter" 
+                            placeholder="Domain ile filtrele..." />
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <i class="fas fa-calendar-alt filter-icon"></i>
+                        <input type="date" id="startDate" name="startDate" 
+                            class="filter-input" 
+                            value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="filter-group">
+                        <i class="fas fa-calendar-alt filter-icon"></i>
+                        <input type="date" id="endDate" name="endDate" 
+                            class="filter-input" 
+                            value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="filter-group text-end">
+                        <button type="button" id="resetFilters" class="btn-reset">
+                            <i class="fas fa-undo-alt me-2"></i>
+                            Filtreleri Sıfırla
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th data-sort="index"><i class="fas fa-hashtag me-2"></i>No</th>
+                    <th data-sort="firstName"><i class="fas fa-user me-2"></i>Ad</th>
+                    <th data-sort="lastName"><i class="fas fa-user-tag me-2"></i>Soyad</th>
+                    <th data-sort="email"><i class="fas fa-envelope me-2"></i>Email</th>
+                    <th data-sort="region"><i class="fas fa-city me-2"></i>Şehir</th>
+                    <th data-sort="date"><i class="fas fa-calendar-alt me-2"></i>Kayıt Tarihi</th>
+                    <th><i class="fas fa-tools me-2"></i>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="customerTableBody">
+                @foreach (var item in Model.Customers)
+                {
+                    count++;
+                    <tr>
+                        <td>@count</td>
+                        <td>@item.FirstName</td>
+                        <td>@item.LastName</td>
+                        <td>@item.Email</td>
+                        <td>@item.Region</td>
+                        <td>@item.RegistrationDate.ToString("dd-MM-yyyy")</td>
+                        <td>
+                            <div class="btn-group">
+                                <button onclick="deleteCustomerConfirm(@item.Id)" 
+                                    class="btn btn-delete me-2">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <a href="/Customer/UpdateCustomer/@item.Id" 
+                                    class="btn btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+         <a href="/Customer/CreateCustomer/" class="btn btn-primary">Yeni Müşteri Girişi</a>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter toggle functionality
+    const filterToggle = document.getElementById('filterToggle');
+    const filterContent = document.getElementById('filterContent');
+    const chevronIcon = filterToggle.querySelector('.fa-chevron-down');
+
+    filterToggle.addEventListener('click', () => {
+        filterContent.classList.toggle('show');
+        chevronIcon.style.transform = filterContent.classList.contains('show') 
+            ? 'rotate(180deg)' 
+            : 'rotate(0)';
+    });
+
+    // Gelişmiş sıralama fonksiyonları
+    const sortStates = new Map(); // Sıralama durumlarını takip etmek için
+
+    const compareFunctions = {
+        index: (a, b, asc) => {
+            const v1 = parseInt(getCellValue(a, 0));
+            const v2 = parseInt(getCellValue(b, 0));
+            return asc ? v1 - v2 : v2 - v1;
+        },
+        date: (a, b, asc) => {
+            const v1 = parseDate(getCellValue(a, 5));
+            const v2 = parseDate(getCellValue(b, 5));
+            return asc ? v1 - v2 : v2 - v1;
+        },
+        text: (a, b, asc) => {
+            const v1 = getCellValue(a, 0).toLowerCase();
+            const v2 = getCellValue(b, 0).toLowerCase();
+            return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+        }
+    };
+
+    function parseDate(dateStr) {
+        // TR formatındaki tarihi (dd-MM-yyyy) Date nesnesine çevirir
+        const [day, month, year] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).getTime();
+    }
+
+    const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+    const updateSortIndicator = (th, sortState) => {
+        // Tüm sıralama göstergelerini temizle
+        th.closest('tr').querySelectorAll('th').forEach(header => {
+            header.classList.remove('asc', 'desc');
+        });
+
+        // Yeni sıralama durumunu uygula
+        if (sortState === 'asc') {
+            th.classList.add('asc');
+        } else if (sortState === 'desc') {
+            th.classList.add('desc');
+        }
+    };
+
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        const sortKey = th.getAttribute('data-sort');
+        sortStates.set(th, 'none'); // Başlangıç durumu
+
+        th.addEventListener('click', () => {
+            const table = th.closest('table');
+            const tbody = table.querySelector('tbody');
+            const currentState = sortStates.get(th);
+            
+            // Sıralama durumunu güncelle (none -> asc -> desc -> none)
+            let newState;
+            switch (currentState) {
+                case 'none':
+                    newState = 'asc';
+                    break;
+                case 'asc':
+                    newState = 'desc';
+                    break;
+                case 'desc':
+                    newState = 'none';
+                    break;
+            }
+            sortStates.set(th, newState);
+
+            // Sıralama işlemi
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (newState === 'none') {
+                // Varsayılan sıralamaya dön (index'e göre)
+                rows.sort((a, b) => compareFunctions.index(a, b, true));
+            } else {
+                // Sütun tipine göre uygun sıralama fonksiyonunu seç
+                let compareFunc;
+                if (sortKey === 'date') {
+                    compareFunc = compareFunctions.date;
+                } else if (sortKey === 'index') {
+                    compareFunc = compareFunctions.index;
+                } else {
+                    compareFunc = (a, b, asc) => {
+                        const columnIndex = Array.from(th.parentNode.children).indexOf(th);
+                        const v1 = getCellValue(a, columnIndex).toLowerCase();
+                        const v2 = getCellValue(b, columnIndex).toLowerCase();
+                        return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+                    };
+                }
+
+                rows.sort((a, b) => compareFunc(a, b, newState === 'asc'));
+            }
+
+            // DOM'u güncelle
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Sıralama göstergesini güncelle
+            updateSortIndicator(th, newState);
+        });
+    });
+
+    // Filtreleme fonksiyonları
+    let filterTimer;
+    const filterDelay = 300;
+
+    $('.filter-input').on('input', function() {
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(filterCustomers, filterDelay);
+    });
+
+    $('#resetFilters').on('click', function() {
+        $('#filterForm')[0].reset();
+        filterCustomers();
+    });
+
+    function filterCustomers() {
+        $.ajax({
+            url: '/Customer/Index',
+            type: 'GET',
+            data: {
+                firstNameFilter: $('#firstNameFilter').val(),
+                lastNameFilter: $('#lastNameFilter').val(),
+                regionFilter: $('#regionFilter').val(),
+                emailDomainFilter: $('#emailDomainFilter').val(),
+                startDate: $('#startDate').val(),
+                endDate: $('#endDate').val()
+            },
+            success: function(response) {
+                updateTable(response);
+            },
+            error: function(xhr, status, error) {
+                console.error('Filtreleme hatası:', error);
+                alert('Filtreleme sırasında bir hata oluştu');
+            }
+        });
+    }
+
+    function updateTable(customers) {
+        const tbody = $('#customerTableBody');
+        tbody.empty();
+
+        if (customers && customers.length > 0) {
+            customers.forEach((customer, index) => {
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${customer.firstName}</td>
+                        <td>${customer.lastName}</td>
+                        <td>${customer.email}</td>
+                        <td>${customer.region}</td>
+                        <td>${new Date(customer.registrationDate)
+                            .toLocaleDateString('tr-TR')}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button onclick="deleteCustomerConfirm(${customer.id})" 
+                                    class="btn btn-delete me-2">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <a href="/Customer/UpdateCustomer/${customer.id}" 
+                                    class="btn btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        } else {
+            tbody.append(`
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <i class="fas fa-search me-2"></i>
+                        Müşteri bulunamadı
+                    </td>
+                </tr>
+            `);
+        }
+    }
+});
+</script>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function deleteCustomerConfirm(Id) {
+        Swal.fire({
+            title: 'Bu Müşteriyi veritabanından silmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Hayır, iptal et!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("/Customer/DeleteCustomer/" + Id, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    // Silme isteği tamamlandıktan sonra SweetAlert göster
+                    Swal.fire({
+                        title: 'Silindi!',
+                        text: 'Müşteri başarıyla silindi.',
+                        icon: 'success',
+                        showConfirmButton: false, // Onay butonunu gizle
+                        timer: 1500  // 1.5 saniye sonra otomatik kapanacak
+                    }).then(() => {
+                        // SweetAlert kapandıktan sonra sayfayı yenile
+                        window.location.href = '/Customer/Index?deleted=true'; 
+                    });
+                })
+                .catch(error => {
+                    Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+                });
+            }
+        });
+    }
+</script>

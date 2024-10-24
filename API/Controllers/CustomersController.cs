@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace API.Controllers
 {
@@ -26,12 +27,12 @@ namespace API.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<ResultCustomerDto>> CustomerList()
+        public async Task<ActionResult<IEnumerable<ResultCustomerDto>>> CustomerList()
         {
             try
             {
-                var customers = _customerService.TGetListAll();
-                var customerDtos = _mapper.Map<IEnumerable<ResultCustomerDto>>(customers); 
+                var customers = await _customerService.TGetListAllAsync();
+                var customerDtos = _mapper.Map<IEnumerable<ResultCustomerDto>>(customers);
                 _logger.LogInformation("Toplam {Count} müşteri başarıyla getirildi", customers.Count);
                 return Ok(customerDtos);
             }
@@ -43,15 +44,15 @@ namespace API.Controllers
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetCustomer(int id)
+        public async Task<IActionResult> GetCustomer(int id)
         {
             try
             {
-                var customer = _customerService.TGetbyID(id);
+                var customer = await _customerService.TGetByIDAsync(id);
                 if (customer == null)
                     return NotFound($"{id} ID numarasına sahip müşteri bulunamadı");
 
-                var customerDto = _mapper.Map<ResultCustomerDto>(customer); 
+                var customerDto = _mapper.Map<ResultCustomerDto>(customer);
                 return Ok(customerDto);
             }
             catch (Exception ex)
@@ -62,18 +63,17 @@ namespace API.Controllers
         }
 
         [HttpPost]
-        public IActionResult CreateCustomer(CreateCustomerDto createCustomerDto)
+        public async Task<IActionResult> CreateCustomer(CreateCustomerDto createCustomerDto)
         {
             try
             {
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var customer = _mapper.Map<Customer>(createCustomerDto); // DTO'yu Entity'e dönüştürme
-                _customerService.TAdd(customer);
+                var customer = _mapper.Map<Customer>(createCustomerDto);
+                await _customerService.TAddAsync(customer);
                 _logger.LogInformation("Yeni müşteri başarı ile oluşturuldu ID: {CustomerId}", customer.Id);
 
-                // Yeni müşteri oluştuğu için customer.Id burada veritabanı tarafından set ediliyor
                 var customerResultDto = _mapper.Map<ResultCustomerDto>(customer);
                 return CreatedAtAction(nameof(GetCustomer), new { id = customerResultDto.Id }, customerResultDto);
             }
@@ -84,21 +84,17 @@ namespace API.Controllers
             }
         }
 
-
         [HttpPut("{id}")]
-        public IActionResult Update(int id, UpdateCustomerDto updateCustomerDto)
+        public async Task<IActionResult> UpdateCustomer(int id,UpdateCustomerDto updateCustomerDto)
         {
             try
             {
-                
-                var existingCustomer = _customerService.TGetbyID(id);
+                var existingCustomer = await _customerService.TGetByIDAsync(id);
                 if (existingCustomer == null)
                     return NotFound("Girilen ID'ye uygun müşteri bulunamadı");
 
-                // DTO'yu mevcut customer nesnesine map ediyoruz
-                _mapper.Map(updateCustomerDto, existingCustomer); // Mevcut entity'yi güncelliyoruz
-
-                _customerService.TUpdate(existingCustomer);
+                _mapper.Map(updateCustomerDto, existingCustomer);
+                await _customerService.TUpdateAsync(existingCustomer);
                 _logger.LogInformation("Müşteri bilgileri başarı ile güncellendi ID: {CustomerId}", id);
 
                 return NoContent();
@@ -110,17 +106,16 @@ namespace API.Controllers
             }
         }
 
-
         [HttpDelete("{id}")]
-        public IActionResult DeleteCustomer(int id)
+        public async Task<IActionResult> DeleteCustomer(int id)
         {
             try
             {
-                var customer = _customerService.TGetbyID(id);
+                var customer = await _customerService.TGetByIDAsync(id);
                 if (customer == null)
                     return NotFound($"{id} ID numarasına sahip müşteri bulunamadı");
 
-                _customerService.TDelete(customer);
+                await _customerService.TDeleteAsync(customer);
                 _logger.LogInformation("Müşteri sistemden başarıyla silindi ID: {CustomerId}", id);
                 return NoContent();
             }

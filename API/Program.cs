@@ -31,8 +31,7 @@ builder.Services.AddAutoMapper(typeof(GeneralMap));
 builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<ICustomerDal, CustomerDal>();
 
-//User Services
-builder.Services.AddScoped<IUserService, UserManager>();
+
 builder.Services.AddScoped<IUserDal, UserDal>();
 
 builder.Services.AddControllers();
