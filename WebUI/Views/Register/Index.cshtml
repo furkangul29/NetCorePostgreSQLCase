@@ -1,0 +1,246 @@
+﻿@model CreateUserViewModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <title>CRM Kayıt Paneli</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
+    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
+    <link rel="stylesheet" href="https://jqueryvalidation.org/files/demo/site-demos.css">
+    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <style>
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+        }
+
+            .form-row .form-row-1 {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+        .requirements {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 10px;
+            align-self: center;
+        }
+
+            .requirements li {
+                color: red;
+                text-decoration: line-through;
+            }
+
+                .requirements li.valid {
+                    color: green;
+                    text-decoration: none;
+                }
+
+        .toggle-password {
+            cursor: pointer;
+            position: absolute;
+            right: 10px;
+            top: 38%; /* Göz simgesini biraz yukarı taşı */
+            transform: translateY(-50%);
+        }
+
+        .form-row-1 {
+            position: relative;
+        }
+    </style>
+</head>
+
+<body class="form-v4">
+    <div class="page-content">
+        <div class="form-v4-content">
+            <div class="form-left">
+                <h2>CRM Sistemi</h2>
+                <p class="text-1">CRM projemiz üzerinden işlemlerinizi gerçekleştirebilmek için hızlı ve güvenli bir kayıt işlemi yapın.</p>
+                <p class="text-2">Zaten bir hesabınız varsa, <a href="/Login/Index/">buradan giriş yapabilirsiniz.</a></p>
+            </div>
+            <form id="registerForm" class="form-detail" method="post" action="/Register/Index">
+                <h2>Kayıt Formu</h2>
+                <input type="hidden" name="Token" value="@Model.Token" />
+                <input type="hidden" name="RoleId" value="@Model.RoleId" />
+                <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-row-1">
+                            <label for="first_name">Adınız</label>
+                            <input type="text" asp-for="Name" id="first_name" class="input-text" required>
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+                        <div class="form-row-1">
+                            <label for="last_name">Soyadınız</label>
+                            <input type="text" asp-for="Surname" id="last_name" class="input-text" required>
+                            <span asp-validation-for="Surname" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="form-row-1">
+                        <label for="your_email">Email Adresi</label>
+                        <input type="email" asp-for="Email" id="your_email" class="input-text" required>
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+                    <div class="form-row-1">
+                        <label for="your_username">Kullanıcı Adınız</label>
+                        <input type="text" asp-for="Username" id="your_username" class="input-text" required>
+                        <span asp-validation-for="Username" class="text-danger"></span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-row-1">
+                            <label for="password">Şifre</label>
+                            <div style="position: relative;">
+                                <input type="password" asp-for="Password" id="password" class="input-text" required>
+                                <span class="toggle-password" id="toggle-password">👁️</span>
+                            </div>
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                            <ul class="requirements">
+                                <li id="length" class="invalid">En az 8 karakter</li>
+                                <li id="uppercase" class="invalid">En az 1 büyük harf</li>
+                                <li id="number" class="invalid">En az 1 sayı</li>
+                                <li id="special" class="invalid">En az 1 özel karakter</li>
+                            </ul>
+                        </div>
+                        <div class="form-row-1">
+                            <label for="confirm_password">Şifre Tekrar</label>
+                            <div style="position: relative;">
+                                <input type="password" asp-for="ConfirmPassword" id="confirm_password" class="input-text" required>
+                                <span class="toggle-password" id="toggle-confirm-password">👁️</span>
+                            </div>
+                            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="form-row-last">
+                        <button type="submit" class="register" style="height:35px" id="registerButton" disabled>Kayıt Ol</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Şifre Görünürlük Toggle
+            function togglePasswordVisibility(passwordField, toggleButton) {
+                $(toggleButton).on('click', function () {
+                    const type = $(passwordField).attr('type') === 'password' ? 'text' : 'password';
+                    $(passwordField).attr('type', type);
+                });
+            }
+
+            togglePasswordVisibility('#password', '#toggle-password');
+            togglePasswordVisibility('#confirm_password', '#toggle-confirm-password');
+
+            // Şifre Validasyonu
+            const createPw = document.querySelector("#password"),
+                confirmPw = document.querySelector("#confirm_password"),
+                submitBtn = document.querySelector("#registerButton");
+
+            const lengthReq = document.querySelector("#length");
+            const uppercaseReq = document.querySelector("#uppercase");
+            const numberReq = document.querySelector("#number");
+            const specialReq = document.querySelector("#special");
+
+            createPw.addEventListener("input", () => {
+                let val = createPw.value.trim();
+                let lengthValid = val.length >= 8;
+                let uppercaseValid = /[A-Z]/.test(val);
+                let numberValid = /[0-9]/.test(val);
+                let specialValid = /[!@@#$%^&*(),.?":{}|<>]/.test(val);
+
+                lengthReq.classList.toggle("valid", lengthValid);
+                lengthReq.classList.toggle("invalid", !lengthValid);
+
+                uppercaseReq.classList.toggle("valid", uppercaseValid);
+                uppercaseReq.classList.toggle("invalid", !uppercaseValid);
+
+                numberReq.classList.toggle("valid", numberValid);
+                numberReq.classList.toggle("invalid", !numberValid);
+
+                specialReq.classList.toggle("valid", specialValid);
+                specialReq.classList.toggle("invalid", !specialValid);
+
+                confirmPw.disabled = !lengthValid || !uppercaseValid || !numberValid || !specialValid;
+                submitBtn.disabled = !confirmPw.disabled;
+            });
+
+            confirmPw.addEventListener("input", () => {
+                submitBtn.disabled = createPw.value !== confirmPw.value;
+            });
+
+            // Form Validasyonu
+            $("#registerForm").validate({
+                rules: {
+                    Name: {
+                        required: true,
+                        minlength: 2
+                    },
+                    Surname: {
+                        required: true,
+                        minlength: 2
+                    },
+                    Email: {
+                        required: true,
+                        email: true
+                    },
+                    Username: {
+                        required: true
+                    },
+                    Password: {
+                        required: true
+                    },
+                    ConfirmPassword: {
+                        required: true,
+                        equalTo: "#password"
+                    }
+                },
+                messages: {
+                    Name: {
+                        required: "Lütfen adınızı girin",
+                        minlength: "Adınız en az 2 karakter uzunluğunda olmalıdır"
+                    },
+                    Surname: {
+                        required: "Lütfen soyadınızı girin",
+                        minlength: "Soyadınız en az 2 karakter uzunluğunda olmalıdır"
+                    },
+                    Email: {
+                        required: "Lütfen e-posta adresinizi girin",
+                        email: "Lütfen geçerli bir e-posta adresi girin"
+                    },
+                    Username: {
+                        required: "Lütfen kullanıcı adınızı girin"
+                    },
+                    Password: {
+                        required: "Lütfen şifrenizi girin"
+                    },
+                    ConfirmPassword: {
+                        required: "Lütfen şifrenizi tekrar girin",
+                        equalTo: "Şifreler eşleşmiyor"
+                    }
+                },
+                submitHandler: function (form) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

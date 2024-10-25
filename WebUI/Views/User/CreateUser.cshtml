@@ -1,0 +1,243 @@
+﻿
+
+@{
+    ViewData["Title"] = "Create User";
+    Layout = "~/Views/UILayout/Index.cshtml";
+}
+
+<style>
+    .page-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 40px 20px;
+    }
+
+    .user-form-container {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+        transform: translateY(20px);
+        opacity: 0;
+        animation: slideIn 0.6s ease forwards;
+    }
+
+    @@keyframes slideIn {
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .user-form-header {
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-form-header i {
+        font-size: 24px;
+        animation: bounce 2s infinite;
+    }
+
+    @@keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-6px); }
+        60% { transform: translateY(-3px); }
+    }
+
+    .user-form-content {
+        padding: 30px;
+    }
+
+    .form-group {
+        position: relative;
+        margin-bottom: 24px;
+        opacity: 0;
+        transform: translateX(-20px);
+        animation: fadeInLeft 0.5s ease forwards;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.2s; }
+    .form-group:nth-child(2) { animation-delay: 0.3s; }
+    .form-group:nth-child(3) { animation-delay: 0.4s; }
+
+    @@keyframes fadeInLeft {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .form-control {
+        height: 56px;
+        padding: 12px 15px 0 45px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        width: 100%;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        background-color: #fff;
+        border-color: #6366F1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+    }
+
+    .form-group i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #666;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus + i {
+        color: #6366F1;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.5s ease 0.6s forwards;
+    }
+
+    @@keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .submit-btn:hover {
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        padding-right: 40px;
+    }
+</style>
+
+<div class="page-container">
+    <div class="user-form-container">
+        <div class="user-form-header">
+            <i class="fas fa-user-plus"></i>
+            <h5 class="mb-0">Yeni Kullanıcı Oluştur</h5>
+        </div>
+        <div class="user-form-content">
+            <form id="createUserForm" asp-action="CreateUser" method="post">
+                <div class="form-group">
+                    <select name="RoleId" class="form-control" required>
+                        <option value="" selected disabled>Rol Seçiniz</option>
+                        <option value="1">Admin</option>
+                        <option value="2">Manager</option>
+                        <option value="3">User</option>
+                    </select>
+                    <i class="fas fa-user-shield"></i>
+                </div>
+
+                <div class="form-group">
+                    <input type="email" name="Email" class="form-control" placeholder="Email Adresi" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-save"></i>
+                    Kullanıcıyı Oluştur
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+function showToast(message, type) {
+    Toastify({
+        text: message,
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "right",
+        backgroundColor: type === 'error' 
+            ? "linear-gradient(to right, #FF416C, #FF4B2B)"
+            : "linear-gradient(to right, #00b09b, #96c93d)",
+        className: "rounded-lg shadow-lg",
+    }).showToast();
+}
+
+// CreateUser form validation
+document.getElementById('createUserForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let email = this.querySelector('input[name="email"]').value;
+    let role = this.querySelector('select[name="RoleId"]').value;
+    
+    if (!role) {
+        showToast("Lütfen bir rol seçin", "error");
+        return;
+    }
+    
+    if (!email) {
+        showToast("Email adresi gereklidir", "error");
+        return;
+    }
+    
+    if (!/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+        showToast("Geçerli bir email adresi girin", "error");
+        return;
+    }
+    
+    showToast("Kullanıcı başarıyla oluşturuldu!", "success");
+    this.submit();
+});
+
+// UpdateUser form validation
+document.getElementById('updateUserForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let newRole = this.querySelector('select[name="NewRoleId"]').value;
+    
+    if (!newRole) {
+        showToast("Lütfen yeni bir rol seçin", "error");
+        return;
+    }
+    
+    showToast("Kullanıcı başarıyla güncellendi!", "success");
+    this.submit();
+});
+
+// Real-time validation
+document.querySelectorAll('.form-control').forEach(input => {
+    input.addEventListener('input', function() {
+        this.classList.remove('border-red-500');
+        if (this.value.trim() !== '') {
+            this.classList.add('border-green-500');
+        }
+    });
+});
+</script>

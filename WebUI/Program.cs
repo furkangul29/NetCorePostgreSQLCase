@@ -1,22 +1,27 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using WebUI.Services.Concrete;
-using WebUI.Handlers;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
 using DataAccessLayer.Abstract;
 using DataAccessLayer.Concrete;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using BusinessLayer.Abstract;
 using BusinessLayer.Concrete;
-using WebUI.Services.ClientCredentialTokenServices;
 using WebUI.Services.IdentityServices;
 using WebUI.Services.LoginServices;
 using WebUI.Services.UserIdentityServices;
 using WebUI.Services.UserServices;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+
+using Serilog;
+using Microsoft.AspNetCore.Identity;
+using System.Configuration;
+using WebUI.Services.ClientCredentialTokenServices;
+using WebUI.Services.RegistrationTokenServices;
+using WebUI.Handlers;
+using WebUI.Services.TokenServices;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,12 +30,35 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<CRMContext>(options =>
     options.UseNpgsql(connectionString));
 
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseNpgsql(connectionString));
+
+//// Identity yapılandırması
+//builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+//    .AddEntityFrameworkStores<ApplicationDbContext>()
+//    .AddDefaultTokenProviders();
+
+// Log dizinini oluştur
+if (!Directory.Exists("logs"))
+{
+    Directory.CreateDirectory("logs");
+}
+
+// Serilog'u başlat
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug() // En düşük log seviyesi
+    .WriteTo.File("logs/app-.log", rollingInterval: RollingInterval.Day) // Dosyaya yaz
+    .CreateLogger();
+
+
+builder.Host.UseSerilog();
 
 builder.Services.AddAutoMapper(typeof(GeneralMap));
-builder.Services.AddAuthentication(options =>
+builder.Services.AddSession(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // Önemli!
+    options.IdleTimeout = TimeSpan.FromMinutes(30); 
+    options.Cookie.HttpOnly = true; 
+    options.Cookie.IsEssential = true; 
 });
 builder.Services.AddAuthentication(options =>
 {
@@ -56,10 +84,10 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidateAudience = false, // Audience doğrulamasını kapatın
+        ValidateAudience = false, 
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = "http://localhost:3001", // IdentityServer4 adresi
+        ValidIssuer = "http://localhost:3001", 
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("crmsecret"))
     };
 });
@@ -105,10 +133,13 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient<IIdentityService, IdentityService>();
 builder.Services.AddHttpClient<IClientCredentialTokenService, ClientCredentialTokenService>();
+builder.Services.AddScoped<IRegistrationTokenService, RegistrationTokenService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<IUserIdentityService, UserIdentityService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
 
 builder.Services.AddCors(options =>
 {
@@ -146,13 +177,14 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseSession();
 app.UseRouting();
-
+app.UseMiddleware<TokenCheckMiddleware>();
 app.UseAuthentication(); // Authentication middleware'i Authorization'dan önce
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Login}/{action=Index}/{id?}");
 
 app.Run();

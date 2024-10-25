@@ -1,4 +1,4 @@
-﻿@model List<WebUI.DTO.IdentityDtos.UserDtos.ResultUserDto>
+﻿@model List<WebUI.DTO.IdentityDtos.UserDtos.UserWithRolesDto>
 @{
     ViewData["Title"] = "User List";
     Layout = "~/Views/UILayout/Index.cshtml";
@@ -71,13 +71,16 @@
 
 <section class="content container-fluid">
     <div class="table-container">
+        <a href="/User/CreateUser" class="btn btn-primary btn-add">
+            <i class="fas fa-plus me-2"></i> Kullanıcı Ekle
+        </a>
         <table class="table table-hover">
             <thead>
                 <tr>
                     <th><i class="fas fa-hashtag me-2"></i>No</th>
                     <th><i class="fas fa-id-card me-2"></i>ID</th>
                     <th><i class="fas fa-user me-2"></i>Username</th>
-                    <th><i class="fas fa-key me-2"></i>Password Hash</th>
+
                     <th><i class="fas fa-user-tag me-2"></i>Role</th>
                     <th><i class="fas fa-clock me-2"></i>Created At</th>
                     <th><i class="fas fa-edit me-2"></i>Updated At</th>
@@ -90,17 +93,12 @@
                     count++;
                     <tr>
                         <td>@count</td>
-                        <td>@item.id</td>
-                        <td>@item.userName</td>
-                        <td>
-                            <span class="text-muted" style="font-family: monospace; font-size: 0.85em;">
-                                @(item.passwordHash?.Substring(0, 20))...
-                            </span>
-                        </td>
+                        <td>@item.Id</td>
+                        <td>@item.Name</td>
                         <td>
                             <span class="role-badge">
                                 <i class="fas fa-shield-alt me-1"></i>
-                                @item.Role
+                                @item.Roles.FirstOrDefault()
                             </span>
                         </td>
                         <td class="date-cell">
@@ -111,10 +109,10 @@
                         </td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn btn-delete" onclick="deleteUser('@item.id')">
+                                <button class="btn btn-delete" onclick="deleteUserConfirm('@item.Id')">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
-                                <a href="/Admin/User/Edit/@item.id" class="btn btn-edit">
+                                <a href="/User/UpdateUser/@item.Id" class="btn btn-edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                             </div>
@@ -134,3 +132,40 @@
         </table>
     </div>
 </section>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function deleteUserConfirm(Id) {
+        Swal.fire({
+            title: 'Bu Kullanıcıyı sistemden silmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Hayır, iptal et!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("/User/DeleteUser/" + Id, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    // Silme isteği tamamlandıktan sonra SweetAlert göster
+                    Swal.fire({
+                        title: 'Silindi!',
+                        text: 'Müşteri başarıyla silindi.',
+                        icon: 'success',
+                        showConfirmButton: false, // Onay butonunu gizle
+                        timer: 1500  // 1.5 saniye sonra otomatik kapanacak
+                    }).then(() => {
+                        // SweetAlert kapandıktan sonra sayfayı yenile
+                        window.location.href = '/User/UserList?deleted=true';
+                    });
+                })
+                .catch(error => {
+                    Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+                });
+            }
+        });
+    }
+</script>

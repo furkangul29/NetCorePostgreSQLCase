@@ -1,6 +1,5 @@
-﻿using IdentityServer.Data;
+﻿
 using IdentityServer.Models;
-using DataAccessLayer.Services.LogServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -12,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Duende.IdentityServer;
+using IdentityServer.Data;
 
 namespace IdentityServer
 {
@@ -28,6 +28,7 @@ namespace IdentityServer
 
         public void ConfigureServices(IServiceCollection services)
         {
+
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("users.read", policy =>

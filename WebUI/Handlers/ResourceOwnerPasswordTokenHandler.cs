@@ -1,9 +1,10 @@
-﻿
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
-
+using System.Threading;
+using System.Threading.Tasks;
 using WebUI.Services.IdentityServices;
 
 namespace WebUI.Handlers
@@ -28,7 +29,6 @@ namespace WebUI.Handlers
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 var tokenResponse = await _identityService.GetRefreshToken();
-
                 if (tokenResponse != null)
                 {
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -38,7 +38,7 @@ namespace WebUI.Handlers
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                //hata mesajı
+                // Hata mesajı buraya eklenebilir
             }
             return response;
         }
