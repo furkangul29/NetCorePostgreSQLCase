@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Duende.IdentityServer.Extensions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using WebUI.DTO.IdentityDtos.LoginDtos;
 using WebUI.Services.IdentityServices;
 
@@ -34,29 +37,31 @@ namespace WebUI.Controllers
             try
             {
                 var startTime = DateTime.Now;
-                _logger.LogWarning(
-                    "Kullanıcı: {Username} için giriş denemesi. Zaman: {Time}",
-                    signInDto.Username,
-                    startTime);
+                _logger.LogWarning("Kullanıcı: {Username} için giriş denemesi. Zaman: {Time}", signInDto.Username, startTime);
 
-                await _identityService.SignIn(signInDto);
+                // Token'ı al ve kontrol et
+                var token = await _identityService.SignIn(signInDto); // Token burada string olarak dönecek
 
-                _logger.LogCritical(
-                    "Kullanıcı: {Username} için başarılı giriş.",
-                    signInDto.Username);
+                if (string.IsNullOrEmpty(token))
+                {
+                    throw new Exception("Token alınamadı. Giriş işlemi başarısız.");
+                }
 
-                return RedirectToAction("Index", "Customer");
+                // Token'ı oturumda sakla
+                HttpContext.Session.SetString("AccessToken", token); // "AccessToken" anahtarı ve token değeri
+
+                _logger.LogCritical("Kullanıcı: {Username} için başarılı giriş.", signInDto.Username);
+                return RedirectToAction("UserList", "User");
             }
             catch (Exception ex)
             {
-                _logger.LogCritical(
-                    ex,
-                    "Kullanıcı: {Username} için başarısız giriş denemesi.",
-                    signInDto.Username);
-
+                _logger.LogCritical(ex, "Kullanıcı: {Username} için başarısız giriş denemesi.", signInDto.Username);
                 ModelState.AddModelError("", "Giriş başarısız. Lütfen tekrar deneyin.");
                 return View(signInDto);
             }
         }
+
+
+
     }
 }

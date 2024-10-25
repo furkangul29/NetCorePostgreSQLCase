@@ -4,6 +4,8 @@ using DataAccessLayer.Concrete;
 using DtoLayer.CustomerDtos;
 using EntityLayer;
 using IdentityServer.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,27 +13,31 @@ using WebUI.Models;
 
 namespace WebUI.Controllers
 {
+
+    
     public class CustomerController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICustomerService _customerService;
         private readonly IMapper _mapper;
         private readonly ILogger<CustomerController> _logger;
-        private readonly UserManager<ApplicationUser> _userManager;
+        //UserManager<ApplicationUser> _userManager;
 
-        public CustomerController(IHttpClientFactory httpClientFactory, ICustomerService customerService, IMapper mapper, ILogger<CustomerController> logger, UserManager<ApplicationUser> userManager)
+        
+        public CustomerController(IHttpClientFactory httpClientFactory, ICustomerService customerService, IMapper mapper, ILogger<CustomerController> logger /*UserManager<ApplicationUser> userManager*/)
         {
             _httpClientFactory = httpClientFactory;
             _customerService = customerService;
             _mapper = mapper;
             _logger = logger;
-            _userManager = userManager;
+            //_userManager = userManager;
         }
-
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "customers.read")]
         public async Task<IActionResult> Index(string firstNameFilter, string lastNameFilter, string regionFilter, string emailDomainFilter, DateTime? startDate, DateTime? endDate)
         {
-            var user = await _userManager.GetUserAsync(User);
-            _logger.LogWarning("Müşteri listesi sayfasına {KullanıcıAdı} tarafından erişildi.", user.NormalizedUserName ?? "Anonim");
+
+            //var user = await _userManager.GetUserAsync(User);
+            _logger.LogWarning("Müşteri listesi sayfasına {KullanıcıAdı} tarafından erişildi.", User?.Identity.Name ?? "Anonim");
 
             var customers = await _customerService.TGetListAllAsync();
             var model = new FilteredCustomerViewModel
