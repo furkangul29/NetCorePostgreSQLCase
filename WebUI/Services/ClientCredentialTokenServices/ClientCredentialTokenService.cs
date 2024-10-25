@@ -1,5 +1,11 @@
 ﻿using IdentityModel.AspNetCore.AccessTokenManagement;
 using IdentityModel.Client;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using WebUI.DTO.IdentityDtos.LoginDtos;
 
 namespace WebUI.Services.ClientCredentialTokenServices
 {
@@ -7,29 +13,29 @@ namespace WebUI.Services.ClientCredentialTokenServices
     {
         private readonly HttpClient _httpClient;
         private readonly IClientAccessTokenCache _clientAccessTokenCache;
-        private readonly IConfiguration _configuration; // IConfiguration nesnesini ekledik
+        private readonly IConfiguration _configuration;
 
         public ClientCredentialTokenService(
             HttpClient httpClient,
             IClientAccessTokenCache clientAccessTokenCache,
-            IConfiguration configuration) // IConfiguration nesnesini enjekte ettik
+            IConfiguration configuration)
         {
             _httpClient = httpClient;
             _clientAccessTokenCache = clientAccessTokenCache;
-            _configuration = configuration; // IConfiguration'ı saklıyoruz
+            _configuration = configuration;
         }
 
-        public async Task<string> GetToken()
+        public async Task<string> GetToken(SignInDto signInDto) // SignInDto kullanıcı adı ve şifreyi içermelidir
         {
-            var token1 = await _clientAccessTokenCache.GetAsync("crmtoken", new ClientAccessTokenParameters(), CancellationToken.None);
-            if (token1 != null)
+            var cachedToken = await _clientAccessTokenCache.GetAsync("admintoken", new ClientAccessTokenParameters(), CancellationToken.None);
+            if (cachedToken != null)
             {
-                return token1.AccessToken;
+                return cachedToken.AccessToken;
             }
 
             var discoveryDocument = await _httpClient.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
             {
-                Address = _configuration["CrmUserClient:ClientId"], // Buradan alıyoruz
+                Address = _configuration["IdentityServer:IdentityServerUrl"],
                 Policy = new DiscoveryPolicy
                 {
                     RequireHttps = false
@@ -41,21 +47,26 @@ namespace WebUI.Services.ClientCredentialTokenServices
                 throw new Exception("Discovery document error: " + discoveryDocument.Error);
             }
 
-            var clientCredentialTokenRequest = new ClientCredentialsTokenRequest
+            // Password akışını kullanarak token almak için düzenleme
+            var passwordTokenRequest = new PasswordTokenRequest
             {
-                ClientId = _configuration["CrmUserClient:ClientId"], // Buradan alıyoruz
-                ClientSecret = _configuration["CrmUserClient:ClientSecret"], // Buradan alıyoruz
-                Address = discoveryDocument.TokenEndpoint
+                Address = discoveryDocument.TokenEndpoint,
+                ClientId = _configuration["ClientSettings:AdminClient:ClientId"],
+                ClientSecret = _configuration["ClientSettings:AdminClient:ClientSecret"],
+                UserName = signInDto.Username,
+                Password = signInDto.Password,
+                Scope = "users.write" // Burada gerekli scope'u belirtin
             };
 
-            var token2 = await _httpClient.RequestClientCredentialsTokenAsync(clientCredentialTokenRequest);
-            if (token2.IsError)
+            var tokenResponse = await _httpClient.RequestPasswordTokenAsync(passwordTokenRequest);
+            if (tokenResponse.IsError)
             {
-                throw new Exception("Token request error: " + token2.Error);
+                throw new Exception("Token request error: " + tokenResponse.Error);
             }
 
-            await _clientAccessTokenCache.SetAsync("crmtoken", token2.AccessToken, token2.ExpiresIn, new ClientAccessTokenParameters(), CancellationToken.None);
-            return token2.AccessToken;
+            await _clientAccessTokenCache.SetAsync("admintoken", tokenResponse.AccessToken, tokenResponse.ExpiresIn, new ClientAccessTokenParameters(), CancellationToken.None);
+            return tokenResponse.AccessToken;
         }
+
     }
 }

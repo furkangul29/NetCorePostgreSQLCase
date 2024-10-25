@@ -32,7 +32,7 @@ namespace WebUI.Controllers
             _logger = logger;
             //_userManager = userManager;
         }
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "customers.read")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "customers.filter")]
         public async Task<IActionResult> Index(string firstNameFilter, string lastNameFilter, string regionFilter, string emailDomainFilter, DateTime? startDate, DateTime? endDate)
         {
 

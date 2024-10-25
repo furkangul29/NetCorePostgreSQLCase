@@ -1,4 +1,4 @@
-﻿using IdentityServer.Data;
+﻿
 using IdentityServer.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Duende.IdentityServer;
+using IdentityServer.Data;
 
 namespace IdentityServer
 {

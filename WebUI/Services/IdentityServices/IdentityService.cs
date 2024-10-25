@@ -1,14 +1,14 @@
 ﻿using IdentityModel.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore; // DbContext için gerekli
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.Security.Claims;
 using WebUI.DTO.IdentityDtos.LoginDtos;
-
-
+using WebUI.Services.TokenServices;
 using DataAccessLayer.Context;
+using System.Net.Http;
 using WebUI.Services.IdentityServices;
 
 namespace WebUI.Services.Concrete
@@ -18,14 +18,16 @@ namespace WebUI.Services.Concrete
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConfiguration _configuration;
-        private readonly CRMContext _dbContext; // DbContext'i tanımlayın
+        private readonly CRMContext _dbContext;
+        private readonly ITokenService _tokenService; // TokenService ekleyin
 
-        public IdentityService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, CRMContext dbContext)
+        public IdentityService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, CRMContext dbContext, ITokenService tokenService)
         {
             _httpClient = httpClient;
             _httpContextAccessor = httpContextAccessor;
             _configuration = configuration;
-            _dbContext = dbContext; // DbContext'i başlatın
+            _dbContext = dbContext;
+            _tokenService = tokenService; // TokenService'i başlatın
         }
 
         public async Task<bool> GetRefreshToken()
@@ -40,15 +42,14 @@ namespace WebUI.Services.Concrete
             });
 
             var refreshToken = await _httpContextAccessor.HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
-            var userRole = GetUserRole(); // Kullanıcının rolünü al
+            var userRole = GetUserRole();
 
             if (string.IsNullOrEmpty(userRole))
             {
-                // Rol yoksa varsayılan bir rol kullanın veya hata işleyin
                 userRole = "DefaultRole";
             }
 
-            var clientSettings = GetClientSettingsByRole(userRole); // Rolüne göre istemci bilgilerini al
+            var clientSettings = GetClientSettingsByRole(userRole);
 
             var refreshTokenRequest = new RefreshTokenRequest
             {
@@ -90,14 +91,12 @@ namespace WebUI.Services.Concrete
 
         public async Task<string> SignIn(SignInDto signInDto)
         {
-            // Discovery endpoint'ten IdentityServer bilgilerini al
             var discoveryEndPoint = await _httpClient.GetDiscoveryDocumentAsync(new DiscoveryDocumentRequest
             {
                 Address = _configuration["IdentityServer:IdentityServerUrl"],
                 Policy = new DiscoveryPolicy { RequireHttps = false }
             });
 
-            // Kullanıcının rolünü al
             var userRole = await _dbContext.AspNetUsers
                 .Where(u => u.UserName == signInDto.Username)
                 .Join(_dbContext.AspNetUserRoles,
@@ -110,10 +109,8 @@ namespace WebUI.Services.Concrete
                     (userRoleId, role) => role.Name)
                 .FirstOrDefaultAsync();
 
-            // Role göre client settings al
             var clientSettings = GetClientSettingsByRole(userRole ?? "DefaultRole");
 
-            // Token isteği için gerekli bilgileri hazırla
             var passwordTokenRequest = new PasswordTokenRequest
             {
                 ClientId = clientSettings.ClientId,
@@ -123,16 +120,15 @@ namespace WebUI.Services.Concrete
                 Address = discoveryEndPoint.TokenEndpoint
             };
 
-            // Token isteği yap
             var tokenResponse = await _httpClient.RequestPasswordTokenAsync(passwordTokenRequest);
 
-            // Hata kontrolü
             if (tokenResponse.IsError)
             {
-                return null; // Token alınamadı, null döndür
+                return null;
             }
 
-            // Kullanıcı bilgilerini token ile al
+            _tokenService.StoreToken(tokenResponse.AccessToken); // Token'ı TokenService ile saklayın
+
             var userInfoRequest = new UserInfoRequest
             {
                 Token = tokenResponse.AccessToken,
@@ -142,59 +138,54 @@ namespace WebUI.Services.Concrete
             var userInfoResponse = await _httpClient.GetUserInfoAsync(userInfoRequest);
             var userId = userInfoResponse.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
 
-            // AuthenticationProperties oluştur
             var authenticationProperties = new AuthenticationProperties
             {
-                IsPersistent = false // Oturum kalıcılığı
+                IsPersistent = false
             };
 
             authenticationProperties.StoreTokens(new List<AuthenticationToken>
-    {
-        new AuthenticationToken
-        {
-            Name = OpenIdConnectParameterNames.AccessToken,
-            Value = tokenResponse.AccessToken
-        },
-        new AuthenticationToken
-        {
-            Name = OpenIdConnectParameterNames.RefreshToken,
-            Value = tokenResponse.RefreshToken
-        },
-        new AuthenticationToken
-        {
-            Name = OpenIdConnectParameterNames.ExpiresIn,
-            Value = DateTime.Now.AddSeconds(tokenResponse.ExpiresIn).ToString()
-        }
-    });
+            {
+                new AuthenticationToken
+                {
+                    Name = OpenIdConnectParameterNames.AccessToken,
+                    Value = tokenResponse.AccessToken
+                },
+                new AuthenticationToken
+                {
+                    Name = OpenIdConnectParameterNames.RefreshToken,
+                    Value = tokenResponse.RefreshToken
+                },
+                new AuthenticationToken
+                {
+                    Name = OpenIdConnectParameterNames.ExpiresIn,
+                    Value = DateTime.Now.AddSeconds(tokenResponse.ExpiresIn).ToString()
+                }
+            });
 
-            // Claims oluştur ve rol bilgisi ekle
             var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.Name, userInfoResponse.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? signInDto.Username),
-        new Claim(ClaimTypes.Role, userRole ?? "DefaultRole") // Kullanıcının rolü veya DefaultRole
-    };
+            {
+                new Claim(ClaimTypes.Name, userInfoResponse.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? signInDto.Username),
+                new Claim(ClaimTypes.Role, userRole ?? "DefaultRole")
+            };
 
-            // ClaimsIdentity ve ClaimsPrincipal oluştur
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
-            // Kullanıcıyı oturum açmış gibi göster
-            await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal, authenticationProperties);
+            await _httpContextAccessor.HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                claimsPrincipal,
+                authenticationProperties);
 
-            return tokenResponse.AccessToken; // Token'ı döndür
+            return tokenResponse.AccessToken;
         }
-
-
 
         private string GetUserRole()
         {
-            // _httpContextAccessor.HttpContext.User kullanarak rolü alın
             return _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Role);
         }
 
         private (string ClientId, string ClientSecret) GetClientSettingsByRole(string role)
         {
-            // Rolüne göre uygun istemci bilgilerini döndür
             return role switch
             {
                 "Admin" => (

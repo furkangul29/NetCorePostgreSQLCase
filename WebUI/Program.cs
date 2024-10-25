@@ -1,14 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using WebUI.Services.Concrete;
-using WebUI.Handlers;
 using DataAccessLayer.Context;
 using Microsoft.EntityFrameworkCore;
 using DataAccessLayer.Abstract;
 using DataAccessLayer.Concrete;
 using BusinessLayer.Abstract;
 using BusinessLayer.Concrete;
-using WebUI.Services.ClientCredentialTokenServices;
 using WebUI.Services.IdentityServices;
 using WebUI.Services.LoginServices;
 using WebUI.Services.UserIdentityServices;
@@ -17,10 +15,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 using Serilog;
-using IdentityServer.Data;
-using IdentityServer.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Configuration;
+using WebUI.Services.ClientCredentialTokenServices;
+using WebUI.Services.RegistrationTokenServices;
+using WebUI.Handlers;
+using WebUI.Services.TokenServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,7 +46,7 @@ if (!Directory.Exists("logs"))
 
 // Serilog'u başlat
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Warning()
+    .MinimumLevel.Debug() // En düşük log seviyesi
     .WriteTo.File("logs/app-.log", rollingInterval: RollingInterval.Day) // Dosyaya yaz
     .CreateLogger();
 
@@ -133,10 +133,13 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient<IIdentityService, IdentityService>();
 builder.Services.AddHttpClient<IClientCredentialTokenService, ClientCredentialTokenService>();
+builder.Services.AddScoped<IRegistrationTokenService, RegistrationTokenService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<IUserIdentityService, UserIdentityService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
 
 builder.Services.AddCors(options =>
 {
@@ -176,12 +179,12 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseSession();
 app.UseRouting();
-
+app.UseMiddleware<TokenCheckMiddleware>();
 app.UseAuthentication(); // Authentication middleware'i Authorization'dan önce
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Login}/{action=Index}/{id?}");
 
 app.Run();
