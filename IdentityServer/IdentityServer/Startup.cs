@@ -75,7 +75,7 @@ namespace IdentityServer
             // IdentityServer4 yapılandırması
             var builder = services.AddIdentityServer(options =>
             {
-                // ... (Diğer IdentityServer seçenekleri)
+                
             })
             .AddInMemoryIdentityResources(Config.IdentityResources)
             .AddInMemoryApiResources(Config.ApiResources)

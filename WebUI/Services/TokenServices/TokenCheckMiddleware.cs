@@ -14,7 +14,8 @@ namespace WebUI.Services.TokenServices
         public async Task InvokeAsync(HttpContext context)
         {
             if (context.Request.Path.StartsWithSegments("/Customer") ||
-                context.Request.Path.StartsWithSegments("/AnotherProtectedController"))
+                context.Request.Path.StartsWithSegments("/Register")||
+                context.Request.Path.StartsWithSegments("/User"))
             {
                 var token = context.Session.GetString("Token");
 

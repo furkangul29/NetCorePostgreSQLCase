@@ -11,12 +11,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
     <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
-    <link rel="stylesheet" href="https://jqueryvalidation.org/files/demo/site-demos.css">
-    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <style>
         .form-group {
             display: flex;
@@ -136,111 +130,163 @@
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
 
-    <script>
-        $(document).ready(function () {
-            // Şifre Görünürlük Toggle
-            function togglePasswordVisibility(passwordField, toggleButton) {
-                $(toggleButton).on('click', function () {
-                    const type = $(passwordField).attr('type') === 'password' ? 'text' : 'password';
-                    $(passwordField).attr('type', type);
-                });
-            }
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.2/dist/jquery.validate.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-            togglePasswordVisibility('#password', '#toggle-password');
-            togglePasswordVisibility('#confirm_password', '#toggle-confirm-password');
+  <script>
+  $(document).ready(function () {
+    // Şifre Görünürlük Toggle
+    function togglePasswordVisibility(passwordField, toggleButton) {
+      $(toggleButton).on('click', function () {
+        const type = $(passwordField).attr('type') === 'password' ? 'text' : 'password';
+        $(passwordField).attr('type', type);
+      });
+    }
 
-            // Şifre Validasyonu
-            const createPw = document.querySelector("#password"),
-                confirmPw = document.querySelector("#confirm_password"),
-                submitBtn = document.querySelector("#registerButton");
+    togglePasswordVisibility('#password', '#toggle-password');
+    togglePasswordVisibility('#confirm_password', '#toggle-confirm-password');
 
-            const lengthReq = document.querySelector("#length");
-            const uppercaseReq = document.querySelector("#uppercase");
-            const numberReq = document.querySelector("#number");
-            const specialReq = document.querySelector("#special");
+    // Şifre Validasyonu
+    const createPw = document.querySelector("#password"),
+      confirmPw = document.querySelector("#confirm_password"),
+      submitBtn = document.querySelector("#registerButton");
 
-            createPw.addEventListener("input", () => {
-                let val = createPw.value.trim();
-                let lengthValid = val.length >= 8;
-                let uppercaseValid = /[A-Z]/.test(val);
-                let numberValid = /[0-9]/.test(val);
-                let specialValid = /[!@@#$%^&*(),.?":{}|<>]/.test(val);
+    const lengthReq = document.querySelector("#length");
+    const uppercaseReq = document.querySelector("#uppercase");
+    const numberReq = document.querySelector("#number");
+    const specialReq = document.querySelector("#special");
 
-                lengthReq.classList.toggle("valid", lengthValid);
-                lengthReq.classList.toggle("invalid", !lengthValid);
+    createPw.addEventListener("input", () => {
+      let val = createPw.value.trim();
+      let lengthValid = val.length >= 8;
+      let uppercaseValid = /[A-Z]/.test(val);
+      let numberValid = /[0-9]/.test(val);
+      let specialValid = /[!@@#$%^&*(),.?":{}|<>]/.test(val);
 
-                uppercaseReq.classList.toggle("valid", uppercaseValid);
-                uppercaseReq.classList.toggle("invalid", !uppercaseValid);
+      lengthReq.classList.toggle("valid", lengthValid);
+      lengthReq.classList.toggle("invalid", !lengthValid);
 
-                numberReq.classList.toggle("valid", numberValid);
-                numberReq.classList.toggle("invalid", !numberValid);
+      uppercaseReq.classList.toggle("valid", uppercaseValid);
+      uppercaseReq.classList.toggle("invalid", !uppercaseValid);
 
-                specialReq.classList.toggle("valid", specialValid);
-                specialReq.classList.toggle("invalid", !specialValid);
+      numberReq.classList.toggle("valid", numberValid);
+      numberReq.classList.toggle("invalid", !numberValid);
 
-                confirmPw.disabled = !lengthValid || !uppercaseValid || !numberValid || !specialValid;
-                submitBtn.disabled = !confirmPw.disabled;
-            });
+      specialReq.classList.toggle("valid", specialValid);
+      specialReq.classList.toggle("invalid", !specialValid);
 
-            confirmPw.addEventListener("input", () => {
-                submitBtn.disabled = createPw.value !== confirmPw.value;
-            });
+      confirmPw.disabled = !lengthValid || !uppercaseValid || !numberValid || !specialValid;
+      submitBtn.disabled = !confirmPw.disabled;
+    });
 
-            // Form Validasyonu
-            $("#registerForm").validate({
-                rules: {
-                    Name: {
-                        required: true,
-                        minlength: 2
-                    },
-                    Surname: {
-                        required: true,
-                        minlength: 2
-                    },
-                    Email: {
-                        required: true,
-                        email: true
-                    },
-                    Username: {
-                        required: true
-                    },
-                    Password: {
-                        required: true
-                    },
-                    ConfirmPassword: {
-                        required: true,
-                        equalTo: "#password"
-                    }
-                },
-                messages: {
-                    Name: {
-                        required: "Lütfen adınızı girin",
-                        minlength: "Adınız en az 2 karakter uzunluğunda olmalıdır"
-                    },
-                    Surname: {
-                        required: "Lütfen soyadınızı girin",
-                        minlength: "Soyadınız en az 2 karakter uzunluğunda olmalıdır"
-                    },
-                    Email: {
-                        required: "Lütfen e-posta adresinizi girin",
-                        email: "Lütfen geçerli bir e-posta adresi girin"
-                    },
-                    Username: {
-                        required: "Lütfen kullanıcı adınızı girin"
-                    },
-                    Password: {
-                        required: "Lütfen şifrenizi girin"
-                    },
-                    ConfirmPassword: {
-                        required: "Lütfen şifrenizi tekrar girin",
-                        equalTo: "Şifreler eşleşmiyor"
-                    }
-                },
-                submitHandler: function (form) {
-                    form.submit();
-                }
-            });
+    confirmPw.addEventListener("input", () => {
+      submitBtn.disabled = createPw.value !== confirmPw.value;
+    });
+
+    // Toastify options (isteğe bağlı olarak özelleştirebilirsiniz)
+    const toastOptions = {
+      position: 'top-right',
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      // ...diğer Toastify seçenekleri...
+    };
+
+    // Form Validasyonu
+    $("#registerForm").validate({
+      rules: {
+        Name: {
+          required: true,
+          minlength: 2
+        },
+        Surname: {
+          required: true,
+          minlength: 2
+        },
+        Email: {
+          required: true,
+          email: true
+        },
+        Username: {
+          required: true
+        },
+        Password: {
+          required: true
+        },
+        ConfirmPassword: {
+          required: true,
+          equalTo: "#password"
+        }
+      },
+      messages: {
+        Name: {
+          required: "Lütfen adınızı girin",
+          minlength: "Adınız en az 2 karakter uzunluğunda olmalıdır"
+        },
+        Surname: {
+          required: "Lütfen soyadınızı girin",
+          minlength: "Soyadınız en az 2 karakter uzunluğunda olmalıdır"
+        },
+        Email: {
+          required: "Lütfen e-posta adresinizi girin",
+          email: "Lütfen geçerli bir e-posta adresi girin"
+        },
+        Username: {
+          required: "Lütfen kullanıcı adınızı girin"
+        },
+        Password: {
+          required: "Lütfen şifrenizi girin"
+        },
+        ConfirmPassword: {
+          required: "Lütfen şifrenizi tekrar girin",
+          equalTo: "Şifreler eşleşmiyor"
+        }
+      },
+      errorPlacement: function (error, element) {
+        // Hata mesajlarını Toastify ile göster
+        Toastify({
+          ...toastOptions,
+          text: error.text(),
+          backgroundColor: '#f8d7da', // Bootstrap danger rengi
+          className: 'error-toast' // İsteğe bağlı olarak özel bir sınıf ekleyin
+        }).showToast();
+      },
+      submitHandler: function (form) {
+        // AJAX ile formu gönder
+        $.ajax({
+          type: "POST",
+          url: form.action, // Formun action URL'si
+          data: $(form).serialize(), // Form verilerini serileştir
+          success: function (response) {
+            // Başarılı işlem durumunda Toastify ile mesaj göster
+            Toastify({
+              ...toastOptions,
+              text: 'Sisteme başarıyla kayıt oldunuz. Giriş sayfasına yönlendiriliyorsunuz...',
+              backgroundColor: '#c3e6cb', // Bootstrap success rengi
+              className: 'success-toast'
+            }).showToast();
+
+            setTimeout(function () {
+              window.location.href = "Login/Index"; // Yönlendirme URL'si
+            }, 3000); // 3 saniye sonra yönlendir
+          },
+          error: function (error) {
+            // Hata durumunda Toastify ile mesaj göster
+            Toastify({
+              ...toastOptions,
+              text: 'Kayıt işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.',
+              backgroundColor: '#f8d7da', // Bootstrap danger rengi
+              className: 'error-toast'
+            }).showToast();
+          }
         });
-    </script>
+      }
+    });
+  });
+</script>
 </body>
 </html>

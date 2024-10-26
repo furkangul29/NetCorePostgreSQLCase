@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using System;
 using System.Linq;
 
@@ -15,49 +17,64 @@ namespace IdentityServer
     {
         public static int Main(string[] args)
         {
-            var host = CreateHostBuilder(args).Build();
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Warning() // Log seviyesini buradan ayarlayabilirsiniz
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning) // Microsoft loglarını filtrele
+                .MinimumLevel.Override("System", LogEventLevel.Warning)    // Sistem loglarını filtrele
+                .Enrich.FromLogContext()
+                .WriteTo.Console()
+                .CreateLogger();
 
             try
             {
-                var seed = args.Contains("/seed");
-                if (seed)
+                var host = CreateHostBuilder(args).Build();
+
+                using (var scope = host.Services.CreateScope())
                 {
-                    LogInformation(host, "Seeding database...");
-                    var config = host.Services.GetRequiredService<IConfiguration>();
-                    var connectionString = config.GetConnectionString("DefaultConnection");
-                    SeedData.EnsureSeedData(connectionString);
-                    LogInformation(host, "Done seeding database.");
-                    return 0;
+                    var services = scope.ServiceProvider;
+
+                    try
+                    {
+                        var seed = args.Contains("/seed");
+                        if (seed)
+                        {
+                            Log.Information("Veritabanı oluşturuluyor...");
+                            var config = services.GetRequiredService<IConfiguration>();
+                            var connectionString = config.GetConnectionString("DefaultConnection");
+                            SeedData.EnsureSeedData(connectionString);
+                            Log.Information("Veritabanı oluşturma işlemi tamamlandı.");
+                            return 0;
+                        }
+
+                        Log.Information("Uygulama başlatılıyor...");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Fatal(ex, "Uygulama başlatılırken bir hata oluştu.");
+                        return 1;
+                    }
                 }
 
-                LogInformation(host, "Starting host...");
                 host.Run();
                 return 0;
             }
             catch (Exception ex)
             {
-                LogError(host, ex, "Host terminated unexpectedly.");
+                Log.Fatal(ex, "Uygulama beklenmedik bir şekilde sonlandırıldı.");
                 return 1;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
             }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .UseSerilog() // Serilog'u kullan
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
                 });
-
-        private static void LogInformation(IHost host, string message)
-        {
-            var logger = host.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation(message);
-        }
-
-        private static void LogError(IHost host, Exception ex, string message)
-        {
-            var logger = host.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, message);
-        }
     }
 }

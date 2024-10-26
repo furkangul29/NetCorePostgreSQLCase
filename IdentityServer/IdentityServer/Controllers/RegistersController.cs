@@ -16,7 +16,6 @@ namespace IdentityServer.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "users.write")]
     public class RegistersController : ControllerBase
     {
@@ -24,7 +23,6 @@ namespace IdentityServer.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ILogger<RegistersController> _logger;
         private readonly ApplicationDbContext _context;
-
 
         public RegistersController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<RegistersController> logger, ApplicationDbContext context)
         {
@@ -37,14 +35,14 @@ namespace IdentityServer.Controllers
         [HttpPost]
         public async Task<IActionResult> UserRegister(UserRegisterDto userRegisterDto)
         {
-            _logger.LogInformation("Registration attempt for user: {Username} at {Time}",
-                userRegisterDto.Username, DateTime.UtcNow);
+            var kullaniciAdi = userRegisterDto.Username;
+            _logger.LogInformation("Kullanıcı {KullaniciAdi} için kayıt denemesi yapıldı: {Zaman}", kullaniciAdi, DateTime.UtcNow);
 
             // İlk olarak rolün varlığını kontrol et
             var role = await _roleManager.FindByIdAsync(userRegisterDto.RoleId.ToString());
             if (role == null)
             {
-                _logger.LogWarning("Role with ID: {RoleId} does not exist", userRegisterDto.RoleId);
+                _logger.LogWarning("Kullanıcı {KullaniciAdi} için belirtilen rol bulunamadı (ID: {RoleId})", kullaniciAdi, userRegisterDto.RoleId);
                 return BadRequest($"Belirtilen rol bulunamadı (ID: {userRegisterDto.RoleId})");
             }
 
@@ -65,8 +63,8 @@ namespace IdentityServer.Controllers
                 var createResult = await _userManager.CreateAsync(user, userRegisterDto.Password);
                 if (!createResult.Succeeded)
                 {
-                    _logger.LogWarning("User registration failed for: {Username}. Errors: {Errors}",
-                        userRegisterDto.Username, string.Join(", ", createResult.Errors));
+                    _logger.LogWarning("Kullanıcı kaydı başarısız oldu: {KullaniciAdi}. Hatalar: {Hatalar}",
+                        kullaniciAdi, string.Join(", ", createResult.Errors.Select(e => e.Description)));
                     return BadRequest(createResult.Errors);
                 }
 
@@ -74,8 +72,8 @@ namespace IdentityServer.Controllers
                 var roleAddResult = await _userManager.AddToRoleAsync(user, role.Name); // Id yerine Name kullan
                 if (!roleAddResult.Succeeded)
                 {
-                    _logger.LogWarning("Role assignment failed for user: {Username}. Errors: {Errors}",
-                        userRegisterDto.Username, string.Join(", ", roleAddResult.Errors));
+                    _logger.LogWarning("Kullanıcı {KullaniciAdi} için rol ataması başarısız oldu. Hatalar: {Hatalar}",
+                        kullaniciAdi, string.Join(", ", roleAddResult.Errors.Select(e => e.Description)));
 
                     // Rol ataması başarısız olduğunda transaction'ı geri al
                     await transaction.RollbackAsync();
@@ -85,8 +83,7 @@ namespace IdentityServer.Controllers
                 // Her şey başarılı ise transaction'ı commit et
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("User registration and role assignment successful for: {Username}",
-                    userRegisterDto.Username);
+                _logger.LogInformation("Kullanıcı kaydı ve rol ataması başarıyla yapıldı: {KullaniciAdi}", kullaniciAdi);
 
                 return Ok(new
                 {
@@ -97,8 +94,8 @@ namespace IdentityServer.Controllers
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "An error occurred during registration for user: {Username}",
-                    userRegisterDto.Username);
+                _logger.LogError(ex, "Kullanıcı {KullaniciAdi} için kayıt işlemi sırasında hata oluştu: {Zaman} - Hata Mesajı: {HataMesaji}",
+                    kullaniciAdi, DateTime.UtcNow, ex.Message);
                 return StatusCode(500, "Kayıt işlemi sırasında bir hata oluştu.");
             }
         }

@@ -1,66 +1,57 @@
-﻿
-using MailKit.Security;
+﻿using MailKit.Security;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Logging;
 using MimeKit;
-using Newtonsoft.Json;
-using Org.BouncyCastle.Asn1.Mozilla;
-using System.Net.Http.Headers;
-using System.Text;
-using WebUI.DTO.IdentityDtos.LoginDtos;
+using System.Security.Claims;
 using WebUI.DTO.IdentityDtos.UserDtos;
 using WebUI.Models;
-using WebUI.Services.ClientCredentialTokenServices;
-using WebUI.Services.RegistrationTokenServices;
 using WebUI.Services.TokenServices;
 using WebUI.Services.UserIdentityServices;
 
 namespace WebUI.Controllers
 {
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme, Policy = "users.read")]
     public class UserController : Controller
     {
         private readonly IUserIdentityService _userIdentityService;
         private readonly ILogger<UserController> _logger;
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IRegistrationTokenService _registrationTokenService;
-        private readonly IClientCredentialTokenService _clientCredentialTokenService;
-        private  readonly ITokenService _tokenService;
+        private readonly ITokenService _tokenService;
 
         public UserController(
             IUserIdentityService userIdentityService,
             ILogger<UserController> logger,
-            IClientCredentialTokenService clientCredentialTokenService,
             IHttpClientFactory httpClientFactory,
-            IRegistrationTokenService registrationTokenService,
+
             IConfiguration configuration,
             ITokenService tokenService)
         {
             _userIdentityService = userIdentityService;
             _logger = logger;
-            _clientCredentialTokenService = clientCredentialTokenService;
             _httpClientFactory = httpClientFactory;
-            _registrationTokenService = registrationTokenService;
             _configuration = configuration;
             _tokenService = tokenService;
         }
 
         public async Task<IActionResult> UserList()
         {
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+            
             try
             {
-                var userId = User?.Identity?.Name ?? "Anonymous";
                 _logger.LogInformation(
-                    "User {UserId} accessing user list at {Time}",
-                    userId,
-                    DateTime.Now);
+                    "{TarihSaat} tarihinde {userName} tarafından kullanıcı listesi görüntülenmeye çalışıldı.",
+                    DateTime.UtcNow, userName);
 
                 var userList = await _userIdentityService.GetAllUserListAsync();
 
                 _logger.LogInformation(
-                    "Retrieved {Count} users from database",
-                    userList.Count());
+                    "{TarihSaat} tarihinde {userName} tarafından {Count} kullanıcı başarıyla görüntülendi.",
+                    DateTime.UtcNow, userName, userList.Count());
 
                 return View(userList);
             }
@@ -68,41 +59,45 @@ namespace WebUI.Controllers
             {
                 _logger.LogError(
                     ex,
-                    "Error occurred while retrieving user list");
+                    "{TarihSaat} tarihinde {userName} tarafından kullanıcı listesi alınırken bir hata oluştu.",
+                    DateTime.UtcNow, userName);
                 throw;
             }
         }
+
         public async Task<IActionResult> CreateUser()
         {
             return View();
         }
 
-
         [HttpPost]
         public async Task<IActionResult> CreateUser(CreateUserViewModel model)
         {
-            // Session'dan kaydedilmiş token'ı al
-            string token = _tokenService.GetToken(); // TokenService kullanarak token alın
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+            string token = _tokenService.GetToken();
 
             HttpContext.Session.SetString("RoleId", model.RoleId);
 
             if (string.IsNullOrEmpty(token))
             {
+                _logger.LogWarning(
+                    "{TarihSaat} tarihinde {userName} tarafından token bulunamadı.",
+                    DateTime.UtcNow, userName);
                 return BadRequest("Token bulunamadı. Lütfen tekrar giriş yapın.");
             }
 
-            // Kullanıcıyı davet etmek için kayıt bağlantısını oluşturun
             var registrationLink = Url.Action("Index", "Register", null, Request.Scheme);
 
-            // Davet e-postasını gönderin
             await SendUserInvitationEmail(model.Email, registrationLink);
 
-            // Kullanıcı listesine yönlendirin
-            return RedirectToAction("UserList");
+            _logger.LogInformation(
+                "{TarihSaat} tarihinde {userName} tarafından {Email} adresine davet e-postası gönderildi.",
+                DateTime.UtcNow, userName, model.Email);
+
+            return Ok(new { success = true }); // Başarılı yanıt döndür
         }
 
 
-        // Davet e-postası göndermek için method
         private async Task SendUserInvitationEmail(string email, string link)
         {
             var smtpSettings = _configuration.GetSection("SmtpSettings");
@@ -112,14 +107,14 @@ namespace WebUI.Controllers
             var password = smtpSettings["Password"];
 
             var body = $@"
-    <html>
-        <body>
-            <p>Merhaba,</p>
-            <p>Bir hesap oluşturmanız için davet edildiniz. Aşağıdaki bağlantıya tıklayarak kaydınızı tamamlayabilirsiniz:</p>
-            <a href='{link}'>Kaydınızı Tamamlayın</a>
-            <p>Teşekkürler,<br/>Uygulama Ekibiniz</p>
-        </body>
-    </html>";
+            <html>
+                <body>
+                    <p>Merhaba,</p>
+                    <p>Bir hesap oluşturmanız için davet edildiniz. Aşağıdaki bağlantıya tıklayarak kaydınızı tamamlayabilirsiniz:</p>
+                    <a href='{link}'>Kaydınızı Tamamlayın</a>
+                    <p>Teşekkürler,<br/>Uygulama Ekibiniz</p>
+                </body>
+            </html>";
 
             using (var message = new MimeMessage())
             {
@@ -141,12 +136,20 @@ namespace WebUI.Controllers
         [HttpGet]
         public async Task<IActionResult> UpdateUser(string id)
         {
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
             {
+                _logger.LogInformation(
+                    "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcı düzenleme sayfasına erişilmeye çalışıldı.",
+                    DateTime.UtcNow, userName, id);
+
                 var user = await _userIdentityService.GetUserByIdAsync(id);
                 if (user == null)
                 {
                     TempData["ErrorMessage"] = "Kullanıcı bulunamadı.";
+                    _logger.LogWarning(
+                        "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcı bulunamadı.",
+                        DateTime.UtcNow, userName, id);
                     return RedirectToAction(nameof(UserList));
                 }
 
@@ -159,30 +162,32 @@ namespace WebUI.Controllers
                     Email = user.email,
                     CurrentRoleName = user.Role,
                     AvailableRoles = new List<SelectListItem>
-            {
-                new SelectListItem { Value = "1", Text = "Admin" },
-                new SelectListItem { Value = "2", Text = "Manager" },
-                new SelectListItem { Value = "3", Text = "User" }
-            }
+                    {
+                        new SelectListItem { Value = "1", Text = "Admin" },
+                        new SelectListItem { Value = "2", Text = "Manager" },
+                        new SelectListItem { Value = "3", Text = "User" }
+                    }
                 };
 
                 return View(viewModel);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while retrieving user details");
+                _logger.LogError(
+                    ex,
+                    "{TarihSaat} tarihinde {userName} tarafından kullanıcı bilgileri alınırken bir hata oluştu.",
+                    DateTime.UtcNow, userName);
                 TempData["ErrorMessage"] = "Kullanıcı bilgileri alınırken bir hata oluştu.";
                 return RedirectToAction(nameof(UserList));
             }
         }
 
-
-
         [HttpPost]
         public async Task<IActionResult> UpdateUser(UpdateUserDto model)
         {
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
-            {       
+            {
                 var updateResult = await _userIdentityService.UpdateUserRoleAsync(new UpdateUserRoleDto
                 {
                     UserId = model.Id,
@@ -191,16 +196,25 @@ namespace WebUI.Controllers
 
                 if (updateResult)
                 {
+                    _logger.LogInformation(
+                        "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcının rolü başarıyla güncellendi.",
+                        DateTime.UtcNow, userName, model.Id);
                     TempData["SuccessMessage"] = "Kullanıcı rolü başarıyla güncellendi.";
                     return RedirectToAction(nameof(UserList));
                 }
 
                 TempData["ErrorMessage"] = "Rol güncellenirken bir hata oluştu.";
+                _logger.LogWarning(
+                    "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcının rolü güncellenirken hata oluştu.",
+                    DateTime.UtcNow, userName, model.Id);
                 return RedirectToAction(nameof(UpdateUser));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while updating user role");
+                _logger.LogError(
+                    ex,
+                    "{TarihSaat} tarihinde {userName} tarafından rol güncellenirken bir hata oluştu.",
+                    DateTime.UtcNow, userName);
                 TempData["ErrorMessage"] = "Rol güncellenirken bir hata oluştu.";
                 return RedirectToAction(nameof(UpdateUser));
             }
@@ -209,26 +223,35 @@ namespace WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteUser(string id)
         {
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
             {
                 var result = await _userIdentityService.DeleteUserAsync(id);
                 if (result)
                 {
+                    _logger.LogInformation(
+                        "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcı başarıyla silindi.",
+                        DateTime.UtcNow, userName, id);
                     TempData["SuccessMessage"] = "Kullanıcı başarıyla silindi.";
                 }
                 else
                 {
+                    _logger.LogWarning(
+                        "{TarihSaat} tarihinde {userName} tarafından ID'si {UserId} olan kullanıcı silinirken bir hata oluştu.",
+                        DateTime.UtcNow, userName, id);
                     TempData["ErrorMessage"] = "Kullanıcı silinirken bir hata oluştu.";
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while deleting user");
+                _logger.LogError(
+                    ex,
+                    "{TarihSaat} tarihinde {userName} tarafından kullanıcı silinirken bir hata oluştu.",
+                    DateTime.UtcNow, userName);
                 TempData["ErrorMessage"] = "Kullanıcı silinirken bir hata oluştu.";
             }
 
             return RedirectToAction(nameof(UserList));
         }
-
     }
 }

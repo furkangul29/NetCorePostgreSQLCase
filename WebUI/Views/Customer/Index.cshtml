@@ -1,11 +1,11 @@
-﻿@model FilteredCustomerViewModel
+﻿@using Microsoft.AspNetCore.Http
+@model FilteredCustomerViewModel
 @{
     Layout = "~/Views/UILayout/Index.cshtml";
     ViewData["Title"] = "Customer List";
     int count = 0;
 }
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
     .filter-section {
@@ -145,6 +145,37 @@
         color: white;
     }
 
+    .btn-add-customer {
+        background: linear-gradient(45deg, #2196F3, #1976D2);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+        .btn-add-customer:hover {
+            background: linear-gradient(45deg, #1976D2, #1565C0);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+            color: white;
+        }
+
+        .btn-add-customer:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-add-customer i {
+            font-size: 1.1em;
+        }
+
     @@keyframes slideDown {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -213,6 +244,10 @@
     </div>
 
     <div class="table-container">
+        <a href="/Customer/CreateCustomer" class="btn-add-customer">
+            <i class="fas fa-users"></i>
+            <span>Yeni Müşteri Ekle</span>
+        </a>
         <table class="table table-hover">
             <thead>
                 <tr>
@@ -252,26 +287,30 @@
                 }
             </tbody>
         </table>
-         <a href="/Customer/CreateCustomer/" class="btn btn-primary">Yeni Müşteri Girişi</a>
     </div>
 </section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Filter toggle functionality
-    const filterToggle = document.getElementById('filterToggle');
-    const filterContent = document.getElementById('filterContent');
-    const chevronIcon = filterToggle.querySelector('.fa-chevron-down');
-
-    filterToggle.addEventListener('click', () => {
-        filterContent.classList.toggle('show');
-        chevronIcon.style.transform = filterContent.classList.contains('show') 
-            ? 'rotate(180deg)' 
-            : 'rotate(0)';
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+    // Filtre Toggle İşlemi
+    const filterToggle = document.getElementById("filterToggle");
+    filterToggle.addEventListener("click", function (e) {
+        if (!('@ViewBag.HasFilterPermission' == 'True')) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Yetkisiz Erişim',
+                text: 'Bu alana erişim yetkiniz yok. Lütfen yetkili kullanıcı ile oturum açınız.'
+            });
+        } 
+        else {
+            $("#filterContent").slideToggle(); 
+            $(this).find("i:last").toggleClass("fa-chevron-down fa-chevron-up"); 
+        }
     });
 
-    // Gelişmiş sıralama fonksiyonları
-    const sortStates = new Map(); // Sıralama durumlarını takip etmek için
+    // Sıralama İşlemleri
+    const sortStates = new Map();
 
     const compareFunctions = {
         index: (a, b, asc) => {
@@ -292,20 +331,26 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function parseDate(dateStr) {
-        // TR formatındaki tarihi (dd-MM-yyyy) Date nesnesine çevirir
         const [day, month, year] = dateStr.split('-').map(Number);
         return new Date(year, month - 1, day).getTime();
     }
 
     const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
 
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+
     const updateSortIndicator = (th, sortState) => {
-        // Tüm sıralama göstergelerini temizle
         th.closest('tr').querySelectorAll('th').forEach(header => {
             header.classList.remove('asc', 'desc');
         });
 
-        // Yeni sıralama durumunu uygula
         if (sortState === 'asc') {
             th.classList.add('asc');
         } else if (sortState === 'desc') {
@@ -313,38 +358,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Sıralama Event Listener'ları
     document.querySelectorAll('th[data-sort]').forEach(th => {
         const sortKey = th.getAttribute('data-sort');
-        sortStates.set(th, 'none'); // Başlangıç durumu
+        sortStates.set(th, 'none');
 
         th.addEventListener('click', () => {
             const table = th.closest('table');
             const tbody = table.querySelector('tbody');
             const currentState = sortStates.get(th);
             
-            // Sıralama durumunu güncelle (none -> asc -> desc -> none)
             let newState;
             switch (currentState) {
-                case 'none':
-                    newState = 'asc';
-                    break;
-                case 'asc':
-                    newState = 'desc';
-                    break;
-                case 'desc':
-                    newState = 'none';
-                    break;
+                case 'none': newState = 'asc'; break;
+                case 'asc': newState = 'desc'; break;
+                case 'desc': newState = 'none'; break;
             }
             sortStates.set(th, newState);
 
-            // Sıralama işlemi
             const rows = Array.from(tbody.querySelectorAll('tr'));
             
             if (newState === 'none') {
-                // Varsayılan sıralamaya dön (index'e göre)
                 rows.sort((a, b) => compareFunctions.index(a, b, true));
             } else {
-                // Sütun tipine göre uygun sıralama fonksiyonunu seç
                 let compareFunc;
                 if (sortKey === 'date') {
                     compareFunc = compareFunctions.date;
@@ -362,30 +398,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 rows.sort((a, b) => compareFunc(a, b, newState === 'asc'));
             }
 
-            // DOM'u güncelle
             tbody.innerHTML = '';
             rows.forEach(row => tbody.appendChild(row));
-            
-            // Sıralama göstergesini güncelle
             updateSortIndicator(th, newState);
         });
     });
 
-    // Filtreleme fonksiyonları
+    // Filtreleme İşlemleri
     let filterTimer;
     const filterDelay = 300;
 
     $('.filter-input').on('input', function() {
+        if (!('@ViewBag.HasFilterPermission' === 'True')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Yetkisiz Erişim',
+                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+            });
+            return;
+        }
+
         clearTimeout(filterTimer);
         filterTimer = setTimeout(filterCustomers, filterDelay);
     });
 
     $('#resetFilters').on('click', function() {
+        if (!('@ViewBag.HasFilterPermission' === 'True')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Yetkisiz Erişim',
+                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+            });
+            return;
+        }
+        
         $('#filterForm')[0].reset();
         filterCustomers();
     });
 
     function filterCustomers() {
+        if (!('@ViewBag.HasFilterPermission' === 'True')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Yetkisiz Erişim',
+                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+            });
+            return;
+        }
+
         $.ajax({
             url: '/Customer/Index',
             type: 'GET',
@@ -397,12 +457,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 startDate: $('#startDate').val(),
                 endDate: $('#endDate').val()
             },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             success: function(response) {
                 updateTable(response);
             },
             error: function(xhr, status, error) {
                 console.error('Filtreleme hatası:', error);
-                alert('Filtreleme sırasında bir hata oluştu');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Hata!',
+                    text: 'Filtreleme sırasında bir hata oluştu'
+                });
             }
         });
     }
@@ -420,8 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${customer.lastName}</td>
                         <td>${customer.email}</td>
                         <td>${customer.region}</td>
-                        <td>${new Date(customer.registrationDate)
-                            .toLocaleDateString('tr-TR')}</td>
+                        <td>${formatDate(customer.registrationDate)}</td>
                         <td>
                             <div class="btn-group">
                                 <button onclick="deleteCustomerConfirm(${customer.id})" 
@@ -450,43 +516,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
-</script>
 
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    function deleteCustomerConfirm(Id) {
-        Swal.fire({
-            title: 'Bu Müşteriyi veritabanından silmek istediğinize emin misiniz?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Evet, sil!',
-            cancelButtonText: 'Hayır, iptal et!'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch("/Customer/DeleteCustomer/" + Id, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    // Silme isteği tamamlandıktan sonra SweetAlert göster
-                    Swal.fire({
-                        title: 'Silindi!',
-                        text: 'Müşteri başarıyla silindi.',
-                        icon: 'success',
-                        showConfirmButton: false, // Onay butonunu gizle
-                        timer: 1500  // 1.5 saniye sonra otomatik kapanacak
-                    }).then(() => {
-                        // SweetAlert kapandıktan sonra sayfayı yenile
-                        window.location.href = '/Customer/Index?deleted=true'; 
-                    });
-                })
-                .catch(error => {
-                    Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+// Müşteri Silme İşlemi
+function deleteCustomerConfirm(id) {
+    Swal.fire({
+        title: 'Bu Müşteriyi veritabanından silmek istediğinize emin misiniz?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'Hayır, iptal et!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch("/Customer/DeleteCustomer/" + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                Swal.fire({
+                    title: 'Silindi!',
+                    text: 'Müşteri başarıyla silindi.',
+                    icon: 'success',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    window.location.href = '/Customer/Index?deleted=true';
                 });
-            }
-        });
-    }
-</script>
+            })
+            .catch(error => {
+                Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+            });
+        }
+    });
+}
+
+// Hoş Geldiniz Mesajı
+if (document.querySelector('[data-show-welcome="true"]')) {
+    document.addEventListener('DOMContentLoaded', function() {
+        const username = document.querySelector('[data-username]').dataset.username;
+        showToast("Hoş geldiniz, " + username, "success");
+    });
+}
+    </script>
+

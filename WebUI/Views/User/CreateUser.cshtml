@@ -1,6 +1,4 @@
-﻿
-
-@{
+﻿@{
     ViewData["Title"] = "Create User";
     Layout = "~/Views/UILayout/Index.cshtml";
 }
@@ -155,7 +153,7 @@
         <div class="user-form-content">
             <form id="createUserForm" asp-action="CreateUser" method="post">
                 <div class="form-group">
-                    <select name="RoleId" class="form-control" required>
+                    <select name="RoleId" class="form-control">
                         <option value="" selected disabled>Rol Seçiniz</option>
                         <option value="1">Admin</option>
                         <option value="2">Manager</option>
@@ -165,7 +163,7 @@
                 </div>
 
                 <div class="form-group">
-                    <input type="email" name="Email" class="form-control" placeholder="Email Adresi" required>
+                    <input type="email" name="Email" class="form-control" placeholder="Email Adresi">
                     <i class="fas fa-envelope"></i>
                 </div>
 
@@ -174,70 +172,93 @@
                     Kullanıcıyı Oluştur
                 </button>
             </form>
+
         </div>
     </div>
 </div>
 <script>
-function showToast(message, type) {
-    Toastify({
-        text: message,
-        duration: 3000,
-        close: true,
-        gravity: "top",
-        position: "right",
-        backgroundColor: type === 'error' 
-            ? "linear-gradient(to right, #FF416C, #FF4B2B)"
-            : "linear-gradient(to right, #00b09b, #96c93d)",
-        className: "rounded-lg shadow-lg",
-    }).showToast();
-}
+    // Toastify fonksiyonunu genişletelim
+    function showToast(message, type) {
+        Toastify({
+            text: message,
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            backgroundColor: type === 'error'
+                ? "linear-gradient(to right, #FF416C, #FF4B2B)"
+                : "linear-gradient(to right, #00b09b, #96c93d)",
+            className: "rounded-lg shadow-lg",
+            // Kapatma butonuna tıklandığında otomatik yönlendirmeyi iptal etmek için
+            onClose: function() {
+                clearTimeout(redirectTimeout);
+            }
+        }).showToast();
+    }
 
-// CreateUser form validation
-document.getElementById('createUserForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    let email = this.querySelector('input[name="email"]').value;
-    let role = this.querySelector('select[name="RoleId"]').value;
-    
-    if (!role) {
-        showToast("Lütfen bir rol seçin", "error");
-        return;
-    }
-    
-    if (!email) {
-        showToast("Email adresi gereklidir", "error");
-        return;
-    }
-    
-    if (!/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
-        showToast("Geçerli bir email adresi girin", "error");
-        return;
-    }
-    
-    showToast("Kullanıcı başarıyla oluşturuldu!", "success");
-    this.submit();
-});
+    // Yönlendirme için bir değişken
+    let redirectTimeout;
 
-// UpdateUser form validation
-document.getElementById('updateUserForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    let newRole = this.querySelector('select[name="NewRoleId"]').value;
-    
-    if (!newRole) {
-        showToast("Lütfen yeni bir rol seçin", "error");
-        return;
-    }
-    
-    showToast("Kullanıcı başarıyla güncellendi!", "success");
-    this.submit();
-});
+    // CreateUser form validation
+    document.getElementById('createUserForm')?.addEventListener('submit', function (e) {
+        e.preventDefault();
 
-// Real-time validation
-document.querySelectorAll('.form-control').forEach(input => {
-    input.addEventListener('input', function() {
-        this.classList.remove('border-red-500');
-        if (this.value.trim() !== '') {
-            this.classList.add('border-green-500');
+        let email = this.querySelector('input[name="Email"]').value;
+        let role = this.querySelector('select[name="RoleId"]').value;
+
+        // Validasyon kontrollerini bir fonksiyona dönüştürelim
+        function validateForm() {
+            if (!role) {
+                showToast("Lütfen bir rol seçin", "error");
+                return false;
+            }
+
+            if (!email) {
+                showToast("Email adresi gereklidir", "error");
+                return false;
+            }
+
+            if (!/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+                showToast("Geçerli bir email adresi girin", "error");
+                return false;
+            }
+
+            return true; // Validasyon başarılıysa true döndür
         }
+
+        if (!validateForm()) {
+            return; // Validasyon başarısızsa formu gönderme
+        }
+
+        // Form verilerini AJAX ile gönder
+        fetch(this.action, {
+            method: this.method,
+            body: new FormData(this)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                // Sunucudan gelen hata mesajını alalım
+                return response.text().then(text => {
+                    throw new Error(text || 'Form gönderilirken bir hata oluştu.');
+                });
+            }
+        })
+        .then(data => {
+            // Başarılı yanıt durumunda işlemler
+            showToast("Mail gönderme işlemi başarılı, kullanıcı listesi sayfasına yönlendiriliyorsunuz...", "success");
+
+            // 2 saniye sonra UserList sayfasına yönlendir
+            redirectTimeout = setTimeout(function() {
+                window.location.href = '/User/UserList';
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('Hata:', error);
+            // Sunucudan gelen hata mesajını göster
+            showToast(error.message, "error");
+        });
     });
-});
 </script>
+
