@@ -1,0 +1,132 @@
+﻿<script>
+    let sortCount = {};
+
+    function initializeSortCounts() {
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            sortCount[th.dataset.sort] = 0;
+        });
+    }
+
+    function resetOtherSortCounts(currentSort) {
+        Object.keys(sortCount).forEach(key => {
+            if (key !== currentSort) sortCount[key] = 0;
+        });
+    }
+
+    function updateSortIcon(th, direction) {
+        const icon = th.querySelector('.sort-icon');
+        if (direction === 'none') {
+            icon.textContent = '↕';
+            icon.classList.remove('active');
+        } else {
+            icon.textContent = direction === 'asc' ? '↑' : '↓';
+            icon.classList.add('active');
+        }
+    }
+
+    function resetAllSortIcons() {
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.textContent = '↕';
+            icon.classList.remove('active');
+        });
+    }
+
+    function sortTable(th) {
+        const sortType = th.dataset.sort;
+        resetOtherSortCounts(sortType);
+        sortCount[sortType] = (sortCount[sortType] + 1) % 3;
+
+        const tbody = th.closest('table').querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        if (sortCount[sortType] === 0) {
+            // Reset to original order
+            resetAllSortIcons();
+            location.reload();
+            return;
+        }
+
+        const direction = sortCount[sortType] === 1 ? 'asc' : 'desc';
+        updateSortIcon(th, direction);
+
+        rows.sort((a, b) => {
+            let aVal, bVal;
+
+            switch (sortType) {
+                case 'number':
+                    aVal = parseInt(a.cells[0].textContent);
+                    bVal = parseInt(b.cells[0].textContent);
+                    break;
+                case 'id':
+                    aVal = a.cells[1].textContent;
+                    bVal = b.cells[1].textContent;
+                    break;
+                case 'name':
+                    aVal = a.cells[2].textContent.toLowerCase();
+                    bVal = b.cells[2].textContent.toLowerCase();
+                    break;
+                case 'role':
+                    aVal = a.cells[3].textContent.toLowerCase();
+                    bVal = b.cells[3].textContent.toLowerCase();
+                    break;
+                case 'created':
+                case 'updated':
+                    const index = sortType === 'created' ? 4 : 5;
+                    aVal = a.cells[index].getAttribute('data-date') || '0';
+                    bVal = b.cells[index].getAttribute('data-date') || '0';
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (direction === 'asc') {
+                return aVal > bVal ? 1 : -1;
+            } else {
+                return aVal < bVal ? 1 : -1;
+            }
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // Initialize sort functionality
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeSortCounts();
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => sortTable(th));
+        });
+    });
+
+    function deleteUserConfirm(Id) {
+        Swal.fire({
+            title: 'Bu Kullanıcıyı sistemden silmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Hayır, iptal et!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("/User/DeleteUser/" + Id, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        Swal.fire({
+                            title: 'Silindi!',
+                            text: 'Müşteri başarıyla silindi.',
+                            icon: 'success',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            window.location.href = '/User/UserList?deleted=true';
+                        });
+                    })
+                    .catch(error => {
+                        Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+                    });
+            }
+        });
+    }
+</script>

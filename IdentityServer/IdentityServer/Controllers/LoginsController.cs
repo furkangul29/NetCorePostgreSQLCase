@@ -17,18 +17,21 @@ namespace IdentityServer.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginsController> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public LoginsController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, ILogger<LoginsController> logger)
+        public LoginsController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, ILogger<LoginsController> logger, IHttpContextAccessor httpContextAccessor)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         [HttpPost]
         public async Task<IActionResult> UserLogin(UserLoginDto userLoginDto)
         {
-            _logger.LogInformation("Login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+            var kullaniciAdi = userLoginDto.Username;
+            _logger.LogInformation("Kullanıcı {KullaniciAdi} için giriş denemesi yapıldı: {Zaman}", kullaniciAdi, DateTime.UtcNow);
 
             try
             {
@@ -37,7 +40,7 @@ namespace IdentityServer.Controllers
 
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("Successful login for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+                    _logger.LogInformation("Kullanıcı {KullaniciAdi} başarıyla giriş yaptı: {Zaman}", kullaniciAdi, DateTime.UtcNow);
 
                     GetCheckAppUserViewModel model = new GetCheckAppUserViewModel
                     {
@@ -46,19 +49,38 @@ namespace IdentityServer.Controllers
                     };
                     var token = JwtTokenGenerator.GenerateToken(model);
 
-                    _logger.LogInformation("JWT token generated for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
+                    _logger.LogInformation("Kullanıcı {KullaniciAdi} için JWT token oluşturuldu: {Zaman}", kullaniciAdi, DateTime.UtcNow);
                     return Ok(token);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
-                    return Ok("Kullanıcı Adı veya Şifre Hatalı");
+                    _logger.LogWarning("Kullanıcı {KullaniciAdi} için giriş denemesi başarısız oldu: {Zaman}", kullaniciAdi, DateTime.UtcNow);
+                    return Ok("Kullanıcı adı veya şifre hatalı.");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred during login attempt for user: {Username} at {Time}", userLoginDto.Username, DateTime.UtcNow);
-                return StatusCode(500, "An internal error occurred.");
+                _logger.LogError(ex, "Kullanıcı {KullaniciAdi} için giriş denemesi sırasında hata meydana geldi: {Zaman} - Hata Mesajı: {HataMesaji}", kullaniciAdi, DateTime.UtcNow, ex.Message);
+                return StatusCode(500, "Bir iç hata meydana geldi.");
+            }
+        }
+        [HttpPost("LogOut")]
+        public async Task<IActionResult> Logout()
+        {
+            var username = User.Identity?.Name;
+            _logger.LogInformation("Kullanıcı {KullaniciAdi} için çıkış işlemi başlatıldı: {Zaman}", username, DateTime.UtcNow);
+
+            try
+            {
+                await _signInManager.SignOutAsync();
+                _logger.LogInformation("Kullanıcı {KullaniciAdi} başarıyla çıkış yaptı: {Zaman}", username, DateTime.UtcNow);
+                return Ok(new { message = "Başarıyla çıkış yapıldı.", redirectUrl = "/Login" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kullanıcı {KullaniciAdi} çıkış yaparken hata oluştu: {Zaman} - Hata Mesajı: {HataMesaji}",
+                    username, DateTime.UtcNow, ex.Message);
+                return StatusCode(500, "Çıkış işlemi sırasında bir hata oluştu.");
             }
         }
     }

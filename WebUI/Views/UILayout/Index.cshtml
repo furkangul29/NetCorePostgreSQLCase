@@ -41,5 +41,60 @@
 
     <!-- SweetAlert JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const logoutLinks = document.querySelectorAll('a[href="/Login/Logout"], a[href="/Login/LogOut"]');
+
+            logoutLinks.forEach(logoutLink => {
+                logoutLink.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // Çıkış yapılıyor göstergesi
+                    const originalContent = logoutLink.innerHTML;
+                    logoutLink.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Çıkış Yapılıyor...</span>';
+
+                    // POST isteği gönder
+                    fetch('/Login/Logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Başarılı çıkış bildirimi
+                            Swal.fire({
+                                title: 'Çıkış Başarılı!',
+                                text: 'Oturumunuz güvenli bir şekilde sonlandırılmıştır. Giriş sayfasına yönlendiriliyorsunuz.',
+                                icon: 'success',
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true
+                            }).then(() => {
+                                window.location.href = '/Login';
+                            });
+                        } else {
+                            throw new Error('Çıkış işlemi başarısız oldu');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Çıkış hatası:', error);
+                        logoutLink.innerHTML = originalContent;
+
+                        // Hata bildirimi
+                        Swal.fire({
+                            title: 'Hata!',
+                            text: 'Çıkış yapılırken bir hata oluştu. Lütfen tekrar deneyin.',
+                            icon: 'error',
+                            confirmButtonText: 'Tamam',
+                            timer: 3000
+                        });
+                    });
+                });
+            });
+        });
+    </script>
+
 </body>
 </html>

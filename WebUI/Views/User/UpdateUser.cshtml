@@ -1,12 +1,15 @@
 ﻿@model WebUI.DTO.IdentityDtos.UserDtos.UpdateUserDto
 @{
-    ViewData["Title"] = "Create User";
+    ViewData["Title"] = "Kullanıcı Güncelle";
     Layout = "~/Views/UILayout/Index.cshtml";
 }
 
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
     <style>
         .page-container {
             max-width: 800px;
@@ -147,6 +150,12 @@
         .card {
             animation: fadeIn 0.6s ease-out;
         }
+        .toastify {
+    top: 70px !important;  /* Bildirimleri üstten 70px aşağı yerleştir */
+    bottom: auto !important; /* Alttan otomatik konumlandırmayı devre dışı bırak */
+    right: 20px !important; /* Sağ kenardan 20px uzaklık */
+}
+
     </style>
 </head>
 <body>
@@ -157,46 +166,47 @@
                 <h5>Kullanıcı Bilgilerini Güncelle</h5>
             </div>
             <div class="card-body">
-                <form id="updateUserForm" method="post">
+                <form id="updateUserForm" asp-controller="User" asp-action="UpdateUser" asp-antiforgery="true">
+                    @Html.AntiForgeryToken()
                     <div class="form-grid">
                         <div class="input-group">
-                            <input type="text" id="Id" value="@Model.Id" readonly class="readonly">
+                            <input type="text" name="Id" asp-for="Id" readonly class="readonly">
                             <i class="fas fa-id-card"></i>
                             <label>Kullanıcı ID</label>
                         </div>
 
                         <div class="input-group">
-                            <input type="text" id="Username" value="@Model.Username" readonly class="readonly">
+                            <input type="text" name="Username" asp-for="Username" readonly class="readonly">
                             <i class="fas fa-user"></i>
                             <label>Kullanıcı Adı</label>
                         </div>
 
                         <div class="input-group">
-                            <input type="text" id="Name" value="@Model.Name" readonly class="readonly">
+                            <input type="text" name="Name" asp-for="Name" readonly class="readonly">
                             <i class="fas fa-signature"></i>
                             <label>Ad</label>
                         </div>
 
                         <div class="input-group">
-                            <input type="text" id="Surname" value="@Model.Surname" readonly class="readonly">
+                            <input type="text" name="Surname" asp-for="Surname" readonly class="readonly">
                             <i class="fas fa-signature"></i>
                             <label>Soyad</label>
                         </div>
 
                         <div class="input-group">
-                            <input type="email" id="Email" value="@Model.Email" readonly class="readonly">
+                            <input type="email" name="Email" asp-for="Email" readonly class="readonly">
                             <i class="fas fa-envelope"></i>
                             <label>Email</label>
                         </div>
 
                         <div class="input-group">
-                            <input type="text" id="CurrentRoleName" value="@Model.CurrentRoleName" readonly class="readonly">
+                            <input type="text" name="CurrentRoleName" asp-for="CurrentRoleName" readonly class="readonly">
                             <i class="fas fa-user-tag"></i>
                             <label>Mevcut Rol</label>
                         </div>
 
                         <div class="input-group">
-                            <select asp-for="NewRoleId" asp-items="Model.AvailableRoles">
+                            <select name="NewRoleId" asp-for="NewRoleId" asp-items="Model.AvailableRoles">
                                 <option value="">-- Yeni rol seçin --</option>
                             </select>
                             <i class="fas fa-user-shield"></i>
@@ -214,43 +224,64 @@
     </div>
 
     <script>
-        document.getElementById('updateUserForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('updateUserForm');
             
-            const newRole = this.querySelector('select[name="NewRoleId"]').value;
-            
-            if (!newRole) {
-                Toastify({
-                    text: "Lütfen yeni bir rol seçin",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "linear-gradient(to right, #FF416C, #FF4B2B)",
-                    className: "rounded-lg shadow-lg",
-                }).showToast();
-                return;
-            }
-            
-            Toastify({
-                text: "Kullanıcı başarıyla güncellendi!",
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-                className: "rounded-lg shadow-lg",
-            }).showToast();
-            
-            this.submit();
-        });
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const newRole = this.querySelector('select[name="NewRoleId"]').value;
+                if (!newRole) {
+                    Toastify({
+                        text: "Lütfen yeni bir rol seçin",
+                        duration: 3000,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "linear-gradient(to right, #FF416C, #FF4B2B)",
+                        }
+                    }).showToast();
+                    return;
+                }
+               try {
+                    const formData = new FormData(this);
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        }
+                    });
 
-        // Animasyonlu input odaklanma efekti
-        document.querySelectorAll('.input-group input, .input-group select').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'scale(1.02)';
-            });
+                    const result = await response.text();
 
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'scale(1)';
+                    if (response.ok) {
+                        Toastify({
+                            text: "Kullanıcı başarıyla güncellendi!",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            style: {
+                                background: "linear-gradient(to right, #00b09b, #96c93d)",
+                            }
+                        }).showToast();
+
+                        setTimeout(() => {
+                            window.location.href = '/User/UserList';
+                        }, 1500);
+                    } else {
+                        throw new Error('İşlem başarısız');
+                    }
+                } catch (error) {
+                    Toastify({
+                        text: "Bir hata oluştu: " + error.message,
+                        duration: 3000,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "linear-gradient(to right, #FF416C, #FF4B2B)",
+                        }
+                    }).showToast();
+                }
             });
         });
     </script>

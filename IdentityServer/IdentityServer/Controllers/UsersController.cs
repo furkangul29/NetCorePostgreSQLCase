@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 using WebUI.DTO.IdentityDtos.UserDtos;
 using static Duende.IdentityServer.IdentityServerConstants;
 
-
 namespace IdentityServer.Controllers
 {
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "users.read")]
@@ -40,28 +39,26 @@ namespace IdentityServer.Controllers
         [HttpGet("GetUser")]
         public async Task<IActionResult> GetUser()
         {
-            _logger.LogWarning("GetUser method started at {Time}", DateTime.UtcNow.AddHours(3));
+            string currentUserId = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            _logger.LogWarning("GetUser metodu başlatıldı, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
 
             try
             {
-                var userClaim = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
-                if (userClaim == null)
+                if (string.IsNullOrEmpty(currentUserId))
                 {
-                    _logger.LogCritical("User claim not found at {Time}", DateTime.UtcNow.AddHours(3));
-                    return Unauthorized("User claim not found.");
+                    _logger.LogCritical("Kullanıcı talebi bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
+                    return Unauthorized("Kullanıcı talebi bulunamadı.");
                 }
 
-                var user = await _userManager.FindByIdAsync(userClaim.Value);
+                var user = await _userManager.FindByIdAsync(currentUserId);
                 if (user == null)
                 {
-                    _logger.LogCritical("User not found for ID: {UserId} at {Time}", userClaim.Value, DateTime.UtcNow.AddHours(3));
-                    return NotFound("User not found.");
+                    _logger.LogCritical("Kullanıcı bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}", currentUserId, currentUserId, DateTime.UtcNow.AddHours(3));
+                    return NotFound("Kullanıcı bulunamadı.");
                 }
 
-                _logger.LogWarning("User found: {UserId} at {Time}", user.Id, DateTime.UtcNow.AddHours(3));
-
                 var roles = await _userManager.GetRolesAsync(user);
-                _logger.LogWarning("Roles fetched for user: {UserId} - Roles: {Roles} at {Time}", user.Id, string.Join(",", roles), DateTime.UtcNow.AddHours(3));
+                _logger.LogInformation("Kullanıcı bulundu, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Roller: {Roles}, Zaman: {Time}", currentUserId, user.Id, string.Join(", ", roles), DateTime.UtcNow.AddHours(3));
 
                 var result = new
                 {
@@ -73,19 +70,22 @@ namespace IdentityServer.Controllers
                     Roles = roles
                 };
 
-                _logger.LogWarning("GetUser method completed successfully at {Time}", DateTime.UtcNow.AddHours(3));
+                _logger.LogInformation("GetUser metodu başarıyla tamamlandı, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred in GetUser method at {Time}", DateTime.UtcNow.AddHours(3));
-                return StatusCode(500, "An internal error occurred.");
+                _logger.LogError(ex, "GetUser metodunda hata oluştu, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
+                return StatusCode(500, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
             }
         }
 
         [HttpGet("GetAllUserList")]
         public async Task<IActionResult> GetAllUserList()
         {
+            string currentUserId = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            _logger.LogInformation("GetAllUserList metodu başlatıldı, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
+
             try
             {
                 var usersWithRoles = await (from user in _context.Users
@@ -116,52 +116,74 @@ namespace IdentityServer.Controllers
                     UpdatedAt = u.UpdatedAt
                 }).ToList();
 
-                return Ok(resultUserList); // Liste olarak döndürülüyor
+                _logger.LogInformation("Kullanıcı listesi başarıyla alındı, İşlem Yapan Kullanıcı ID: {UserId}, Kullanıcı Sayısı: {UserCount}, Zaman: {Time}", currentUserId, resultUserList.Count, DateTime.UtcNow.AddHours(3));
+                return Ok(resultUserList);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "GetAllUsersWithRoles metodunda bir hata oluştu");
-                return StatusCode(500, "Bir hata oluştu.");
+                _logger.LogError(ex, "GetAllUserList metodunda hata oluştu, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
+                return StatusCode(500, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
             }
         }
 
-
-
-            [HttpGet("{id}")]
+        [AllowAnonymous]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(string id)
         {
-            _logger.LogInformation("GetUserById method started at {Time}", DateTime.UtcNow.AddHours(3));
+            string currentUserId = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            _logger.LogInformation("GetUserById metodu başlatıldı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}",
+                currentUserId, id, DateTime.UtcNow.AddHours(3));
 
             try
             {
-                // Kullanıcı bilgilerini getir
-                var user = await _userManager.FindByIdAsync(id);
-                if (user == null)
+                var userWithRole = await (
+                         from user in _context.Users
+                         where user.Id == id
+                         select new
+                         {
+                             UserId = user.Id,
+                             UserName = user.UserName,
+                             Name = user.Name,
+                             Surname = user.Surname,
+                             Email = user.Email,
+                             CreatedAt = user.CreatedAt,
+                             UpdatedAt = user.UpdatedAt,
+                             Role = (from userRole in _context.UserRoles
+                                     join role in _context.Roles on userRole.RoleId equals role.Id
+                                     where userRole.UserId == user.Id
+                                     select role.Name).FirstOrDefault()
+                         }
+                     ).FirstOrDefaultAsync();
+
+                if (userWithRole == null)
                 {
-                    _logger.LogWarning("User not found for ID: {UserId} at {Time}", id, DateTime.UtcNow.AddHours(3));
-                    return NotFound("User not found.");
+                    _logger.LogWarning("Kullanıcı bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}",
+                        currentUserId, id, DateTime.UtcNow.AddHours(3));
+                    return NotFound("Kullanıcı bulunamadı.");
                 }
 
-                // Kullanıcının rollerini getir
-                var roles = await _userManager.GetRolesAsync(user);
-
-                var result = new
+                var result = new GetUserWithRole
                 {
-                    Id = user.Id,
-                    Name = user.Name,
-                    Surname = user.Surname,
-                    Email = user.Email,
-                    UserName = user.UserName,
-                    Roles = roles 
+                    Id = userWithRole.UserId,
+                    Name = userWithRole.Name,
+                    Surname = userWithRole.Surname,
+                    Email = userWithRole.Email,
+                    Username = userWithRole.UserName,
+                    Role = userWithRole.Role,
+                    CreatedAt = userWithRole.CreatedAt,
+                    UpdatedAt = userWithRole.UpdatedAt
                 };
 
-                _logger.LogInformation("GetUserById method completed successfully at {Time}", DateTime.UtcNow.AddHours(3));
+                _logger.LogInformation("GetUserById metodu başarıyla tamamlandı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}",
+                    currentUserId, result.Id, DateTime.UtcNow.AddHours(3));
+
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred in GetUserById method at {Time}", DateTime.UtcNow.AddHours(3));
-                return StatusCode(500, "An internal error occurred.");
+                _logger.LogError(ex, "GetUserById metodunda hata oluştu, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Hata: {Error}, Zaman: {Time}",
+                    currentUserId, id, ex.Message, DateTime.UtcNow.AddHours(3));
+                return StatusCode(500, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
             }
         }
 
@@ -169,94 +191,100 @@ namespace IdentityServer.Controllers
         [HttpPost("UpdateUserRole")]
         public async Task<IActionResult> UpdateUserRole([FromBody] UpdateUserRoleDto model)
         {
-            _logger.LogInformation("UpdateUserRole method started at {Time}", DateTime.UtcNow.AddHours(3));
+            string currentUserId = User.Claims.FirstOrDefault(x =>
+                x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
+            _logger.LogInformation("UpdateUserRole metodu başlatıldı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}",
+                currentUserId, model.UserId, DateTime.UtcNow.AddHours(3));
+
             try
             {
                 var user = await _userManager.FindByIdAsync(model.UserId);
                 if (user == null)
                 {
-                    _logger.LogWarning("User not found for ID: {UserId} at {Time}", model.UserId, DateTime.UtcNow.AddHours(3));
-                    return NotFound("User not found.");
+                    _logger.LogWarning("Kullanıcı bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}",
+                        currentUserId, model.UserId, DateTime.UtcNow.AddHours(3));
+                    return NotFound(new { success = false, message = "Kullanıcı bulunamadı." });
                 }
 
-                // Önce rol adını bulalım
                 var role = await _roleManager.FindByIdAsync(model.NewRoleId);
                 if (role == null)
                 {
-                    _logger.LogWarning("Role not found for ID: {RoleId} at {Time}", model.NewRoleId, DateTime.UtcNow.AddHours(3));
-                    return NotFound("Role not found.");
+                    _logger.LogWarning("Rol bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Rol ID: {TargetRoleId}, Zaman: {Time}",
+                        currentUserId, model.NewRoleId, DateTime.UtcNow.AddHours(3));
+                    return NotFound(new { success = false, message = "Rol bulunamadı." });
                 }
 
+                // Mevcut rolleri temizle
                 var currentRoles = await _userManager.GetRolesAsync(user);
-                await _userManager.RemoveFromRolesAsync(user, currentRoles);
-                // Güncellenme tarihini ayarlayalım
-                user.UpdatedAt = DateTime.UtcNow.AddHours(3);
+                if (currentRoles.Any())
+                {
+                    await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                }
 
-                // Rol ID'si yerine rol adını kullanıyoruz
-                await _userManager.AddToRoleAsync(user, role.Name);
+                // Yeni rolü ekle
+                var result = await _userManager.AddToRoleAsync(user, role.Name);
 
-                _logger.LogInformation("User role updated successfully for user: {UserId} at {Time}", model.UserId, DateTime.UtcNow.AddHours(3));
-                return Ok("User role updated successfully.");
+                if (result.Succeeded)
+                {
+                    // UpdatedAt alanını güncelle
+                    user.UpdatedAt = DateTime.UtcNow.AddHours(3);
+                    await _userManager.UpdateAsync(user);
+
+                    _logger.LogInformation("Kullanıcı rolü başarıyla güncellendi, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Rol: {RoleName}, Zaman: {Time}",
+                        currentUserId, user.Id, role.Name, DateTime.UtcNow.AddHours(3));
+
+                    return Ok(new { success = true, message = "Kullanıcı rolü başarıyla güncellendi." });
+                }
+                else
+                {
+                    _logger.LogWarning("Rol güncellenemedi, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Hatalar: {Errors}",
+                        currentUserId, user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    return BadRequest(new { success = false, message = "Rol güncellenirken bir hata oluştu." });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred in UpdateUserRole method at {Time}", DateTime.UtcNow.AddHours(3));
-                return StatusCode(500, "An internal error occurred.");
+                _logger.LogError(ex, "UpdateUserRole metodunda hata oluştu, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}",
+                    currentUserId, DateTime.UtcNow.AddHours(3));
+
+                return StatusCode(500, new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
             }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            _logger.LogInformation("DeleteUser method started at {Time}", DateTime.UtcNow.AddHours(3));
+            string currentUserId = User.Claims.FirstOrDefault(x => x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            _logger.LogInformation("DeleteUser metodu başlatıldı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}", currentUserId, id, DateTime.UtcNow.AddHours(3));
 
             try
             {
                 var user = await _userManager.FindByIdAsync(id);
                 if (user == null)
                 {
-                    _logger.LogWarning("User not found for ID: {UserId} at {Time}", id, DateTime.UtcNow.AddHours(3));
-                    return NotFound("User not found.");
+                    _logger.LogWarning("Kullanıcı bulunamadı, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}", currentUserId, id, DateTime.UtcNow.AddHours(3));
+                    return NotFound("Kullanıcı bulunamadı.");
                 }
 
                 var result = await _userManager.DeleteAsync(user);
-                if (result.Succeeded)
+                if (!result.Succeeded)
                 {
-                    _logger.LogInformation("User deleted successfully for ID: {UserId} at {Time}", id, DateTime.UtcNow.AddHours(3));
-                    return Ok("User deleted successfully.");
+                    _logger.LogWarning("Kullanıcı silme işlemi başarısız oldu, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}", currentUserId, id, DateTime.UtcNow.AddHours(3));
+                    return BadRequest("Kullanıcı silme işlemi başarısız oldu.");
                 }
 
-                _logger.LogWarning("User deletion failed for ID: {UserId} at {Time}", id, DateTime.UtcNow.AddHours(3));
-                return BadRequest("Failed to delete user.");
+                _logger.LogInformation("Kullanıcı başarıyla silindi, İşlem Yapan Kullanıcı ID: {UserId}, Hedef Kullanıcı ID: {TargetUserId}, Zaman: {Time}", currentUserId, id, DateTime.UtcNow.AddHours(3));
+                return Ok("Kullanıcı başarıyla silindi.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred in DeleteUser method at {Time}", DateTime.UtcNow.AddHours(3));
-                return StatusCode(500, "An internal error occurred.");
+                _logger.LogError(ex, "DeleteUser metodunda hata oluştu, İşlem Yapan Kullanıcı ID: {UserId}, Zaman: {Time}", currentUserId, DateTime.UtcNow.AddHours(3));
+                return StatusCode(500, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
             }
         }
-        [HttpGet("GetAllRoles")]
-        public async Task<IActionResult> GetAllRoles()
-        {
-            _logger.LogInformation("GetAllRoles method started at {Time}", DateTime.UtcNow.AddHours(3));
-
-            try
-            {
-                var roles = await _roleManager.Roles.Select(role => new
-                {
-                    Id = role.Id,
-                    Name = role.Name
-                }).ToListAsync();
-
-                _logger.LogInformation("Fetched {RoleCount} roles from the database at {Time}", roles.Count, DateTime.UtcNow.AddHours(3));
-                return Ok(roles);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred in GetAllRoles method at {Time}", DateTime.UtcNow.AddHours(3));
-                return StatusCode(500, "An internal error occurred.");
-            }
-        }
+       
 
     }
 }

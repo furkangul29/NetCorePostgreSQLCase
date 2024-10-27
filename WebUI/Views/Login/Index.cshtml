@@ -2,21 +2,19 @@
 @{
     Layout = null;
 }
-
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Giriş Sayfası</title>
+    <link rel="stylesheet" href="/css/LoginIndex/loginIndex.css">
 
-    <!-- Font and Style -->
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
-    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css">
 </head>
+<body>
+    <!-- Toastify Notifications -->
+    <div id="toastify-container"></div>
 
-<body class="form-v4">
     <div class="page-content">
         <div class="form-v4-content">
             <div class="form-left">
@@ -25,15 +23,15 @@
                 <p class="text-2">Oturum açarak satış raporlarına, müşteri listelerine ve CRM araçlarına erişim sağlayabilirsiniz. Eğer henüz bir hesabınız yoksa kayıt olabilirsiniz.</p>
             </div>
 
-            <form class="form-detail" method="post">
+            <form class="form-detail" id="signInForm" method="post">
                 <h2>CRM Giriş Formu</h2>
                 <div class="form-row">
                     <label for="username">Kullanıcı Adı</label>
-                    <input type="text" id="username" asp-for="Username" class="input-text" required>
+                    <input type="text" id="username" asp-for="Username" class="input-text">
                 </div>
                 <div class="form-row">
                     <label for="password">Şifre</label>
-                    <input type="password" id="password" asp-for="Password" class="input-text" required>
+                    <input type="password" id="password" asp-for="Password" class="input-text">
                 </div>
                 <div class="form-row-last">
                     <button type="submit" class="register" style="height:35px">Giriş Yap</button>
@@ -41,10 +39,98 @@
             </form>
         </div>
     </div>
-
     <!-- JQuery and Validation -->
     <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+  const toastOptions = {
+    position: 'top-right',
+    autoClose: 3000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progressBar: true
+  };
+        // Toastify fonksiyonunu genişletelim
+        function showToast(message, type) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: type === 'error'
+                    ? "linear-gradient(to right, #FF416C, #FF4B2B)"
+                    : "linear-gradient(to right, #00b09b, #96c93d)",
+                className: "rounded-lg shadow-lg",
+                // Kapatma butonuna tıklandığında otomatik yönlendirmeyi iptal etmek için
+                onClose: function () {
+                    clearTimeout(redirectTimeout);
+                }
+            }).showToast();
+        }
+
+        // Yönlendirme için bir değişken
+        let redirectTimeout;
+
+        // SignIn form validation
+        document.getElementById('signInForm')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            let username = this.querySelector('input[name="Username"]').value;
+            let password = this.querySelector('input[name="Password"]').value;
+
+            // Validasyon kontrollerini bir fonksiyona dönüştürelim
+            function validateForm() {
+                if (!username) {
+                    showToast("Kullanıcı adı gereklidir", "error");
+                    return false;
+                }
+
+                if (!password) {
+                    showToast("Şifre gereklidir", "error");
+                    return false;
+                }
+
+                return true; // Validasyon başarılıysa true döndür
+            }
+
+            if (!validateForm()) {
+                return; // Validasyon başarısızsa formu gönderme
+            }
+
+            // Form verilerini AJAX ile gönder
+            fetch(this.action, {
+                method: this.method,
+                body: new FormData(this)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        // Sunucudan gelen hata mesajını alalım
+                        return response.text().then(text => {
+                            throw new Error('Giriş başarısız. Lütfen Kullanıcı adınızı veya şifrenizi kontrol ediniz.');
+                        });
+                    }
+                })
+                .then(data => {
+                    // Başarılı yanıt durumunda işlemler
+                    showToast("Giriş başarılı. Ana sayfaya yönlendiriliyorsunuz...", "success");
+
+                    redirectTimeout = setTimeout(function () {
+                        window.location.href = '/Customer/Index';
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    // Sunucudan gelen hata mesajını göster
+                    showToast(error.message, "error");
+                });
+        });
+    </script>
 </body>
 </html>

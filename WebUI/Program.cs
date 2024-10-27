@@ -13,14 +13,10 @@ using WebUI.Services.UserIdentityServices;
 using WebUI.Services.UserServices;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
 using Serilog;
-using Microsoft.AspNetCore.Identity;
-using System.Configuration;
-using WebUI.Services.ClientCredentialTokenServices;
-using WebUI.Services.RegistrationTokenServices;
-using WebUI.Handlers;
 using WebUI.Services.TokenServices;
+using Microsoft.AspNetCore.Authentication;
+using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,10 +42,21 @@ if (!Directory.Exists("logs"))
 
 // Serilog'u başlat
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug() // En düşük log seviyesi
+    .MinimumLevel.Information() // En düşük log seviyesi
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning) // Microsoft loglarını filtrele
+    .MinimumLevel.Override("System", LogEventLevel.Warning)    // Sistem loglarını filtrele
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Error)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Error)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Error)
+    .MinimumLevel.Override("IdentityServer", LogEventLevel.Warning)
+    .Filter.ByExcluding(logEvent => logEvent.MessageTemplate.Text.Contains("Request starting") ||
+                                     logEvent.MessageTemplate.Text.Contains("Executing endpoint") ||
+                                     logEvent.MessageTemplate.Text.Contains("Executed action"))
+    .Enrich.FromLogContext()
     .WriteTo.File("logs/app-.log", rollingInterval: RollingInterval.Day) // Dosyaya yaz
+    .WriteTo.Console()
     .CreateLogger();
-
 
 builder.Host.UseSerilog();
 
@@ -60,6 +67,9 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true; 
     options.Cookie.IsEssential = true; 
 });
+
+
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -132,8 +142,6 @@ builder.Services.AddHttpContextAccessor();
 // Servis baðýmlýlýklarý
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient<IIdentityService, IdentityService>();
-builder.Services.AddHttpClient<IClientCredentialTokenService, ClientCredentialTokenService>();
-builder.Services.AddScoped<IRegistrationTokenService, RegistrationTokenService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<IUserIdentityService, UserIdentityService>();
@@ -153,12 +161,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<ICustomerDal, CustomerDal>();
-builder.Services.AddScoped<IUserDal, UserDal>();
 
-
-// Token Handler'lar
-builder.Services.AddScoped<ResourceOwnerPasswordTokenHandler>();
-builder.Services.AddScoped<ClientCredentialTokenHandler>();
 
 //builder.Services.AddScoped<IIdentityServerInteractionService, IdentityServerInteractionService>();
 

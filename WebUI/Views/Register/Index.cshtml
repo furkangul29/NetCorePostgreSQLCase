@@ -7,62 +7,11 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Kayıt Paneli</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
-    <link rel="stylesheet" href="https://jqueryvalidation.org/files/demo/site-demos.css">
-    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <style>
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-        }
-
-            .form-row .form-row-1 {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-
-        .requirements {
-            list-style-type: none;
-            padding: 0;
-            margin-top: 10px;
-            align-self: center;
-        }
-
-            .requirements li {
-                color: red;
-                text-decoration: line-through;
-            }
-
-                .requirements li.valid {
-                    color: green;
-                    text-decoration: none;
-                }
-
-        .toggle-password {
-            cursor: pointer;
-            position: absolute;
-            right: 10px;
-            top: 38%; /* Göz simgesini biraz yukarı taşı */
-            transform: translateY(-50%);
-        }
-
-        .form-row-1 {
-            position: relative;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="/css/RegisterIndex/registerIndex.css">
 </head>
 
 <body class="form-v4">
@@ -136,6 +85,11 @@
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
 
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.2/dist/jquery.validate.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
     <script>
         $(document).ready(function () {
             // Şifre Görünürlük Toggle
@@ -152,15 +106,17 @@
             // Şifre Validasyonu
             const createPw = document.querySelector("#password"),
                 confirmPw = document.querySelector("#confirm_password"),
-                submitBtn = document.querySelector("#registerButton");
+                submitBtn = document.querySelector("#registerButton"),
+                usernameInput = document.querySelector("#Username"),
+                emailInput = document.querySelector("#Email");
 
             const lengthReq = document.querySelector("#length");
             const uppercaseReq = document.querySelector("#uppercase");
             const numberReq = document.querySelector("#number");
             const specialReq = document.querySelector("#special");
 
-            createPw.addEventListener("input", () => {
-                let val = createPw.value.trim();
+            function validatePassword(password) {
+                let val = password.trim();
                 let lengthValid = val.length >= 8;
                 let uppercaseValid = /[A-Z]/.test(val);
                 let numberValid = /[0-9]/.test(val);
@@ -168,44 +124,93 @@
 
                 lengthReq.classList.toggle("valid", lengthValid);
                 lengthReq.classList.toggle("invalid", !lengthValid);
-
                 uppercaseReq.classList.toggle("valid", uppercaseValid);
                 uppercaseReq.classList.toggle("invalid", !uppercaseValid);
-
                 numberReq.classList.toggle("valid", numberValid);
                 numberReq.classList.toggle("invalid", !numberValid);
-
                 specialReq.classList.toggle("valid", specialValid);
                 specialReq.classList.toggle("invalid", !specialValid);
 
-                confirmPw.disabled = !lengthValid || !uppercaseValid || !numberValid || !specialValid;
-                submitBtn.disabled = !confirmPw.disabled;
+                return lengthValid && uppercaseValid && numberValid && specialValid;
+            }
+
+            function updateSubmitButtonState() {
+                const isValid = validatePassword(createPw.value) && createPw.value === confirmPw.value;
+                submitBtn.disabled = !isValid;
+            }
+
+            createPw.addEventListener("blur", () => {
+                if (createPw.value) {
+                    validatePassword(createPw.value);
+                    updateSubmitButtonState();
+                }
             });
 
-            confirmPw.addEventListener("input", () => {
-                submitBtn.disabled = createPw.value !== confirmPw.value;
+            confirmPw.addEventListener("blur", () => {
+                if (confirmPw.value) {
+                    updateSubmitButtonState();
+                }
             });
+
+            // Toastify options
+            const toastOptions = {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            };
+
+            // Kullanıcı adı ve e-posta kontrolü için fonksiyon
+            async function checkUserExists(fieldName, fieldValue) {
+                try {
+                    const response = await $.ajax({
+                        type: "POST",
+                        url: 'Register/Index', // Kontrol edilecek endpoint
+                        data: { [fieldName]: fieldValue } // Gönderilecek veri
+                    });
+
+                    // Başarılı yanıt durumunda
+                    return response.Success;
+                } catch (error) {
+                    console.error("API hatası:", error);
+                    return false;
+                }
+            }
 
             // Form Validasyonu
             $("#registerForm").validate({
                 rules: {
                     Name: {
                         required: true,
-                        minlength: 2
+                        minlength: 2,
+                        pattern: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/
                     },
                     Surname: {
                         required: true,
-                        minlength: 2
+                        minlength: 2,
+                        pattern: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/
                     },
                     Email: {
                         required: true,
                         email: true
                     },
                     Username: {
-                        required: true
+                        required: true,
+                        remote: {
+                            url: 'Register/Index', // Kullanıcı adı kontrol endpoint'i
+                            type: "post",
+                            data: {
+                                username: function () {
+                                    return $("#Username").val();
+                                }
+                            }
+                        }
                     },
                     Password: {
-                        required: true
+                        required: true,
+                        minlength: 8
                     },
                     ConfirmPassword: {
                         required: true,
@@ -214,33 +219,127 @@
                 },
                 messages: {
                     Name: {
-                        required: "Lütfen adınızı girin",
-                        minlength: "Adınız en az 2 karakter uzunluğunda olmalıdır"
+                        required: "Ad alanı zorunludur.",
+                        minlength: "Ad en az 2 karakter olmalıdır.",
+                        pattern: "Ad alanında sadece harf ve boşluk olabilir."
                     },
                     Surname: {
-                        required: "Lütfen soyadınızı girin",
-                        minlength: "Soyadınız en az 2 karakter uzunluğunda olmalıdır"
+                        required: "Soyad alanı zorunludur.",
+                        minlength: "Soyad en az 2 karakter olmalıdır.",
+                        pattern: "Soyad alanında sadece harf ve boşluk olabilir."
                     },
                     Email: {
-                        required: "Lütfen e-posta adresinizi girin",
-                        email: "Lütfen geçerli bir e-posta adresi girin"
+                        required: "E-posta alanı zorunludur.",
+                        email: "Lütfen geçerli bir e-posta adresi girin.",
+                        remote: "Bu e-posta adresi zaten kullanımda."
                     },
                     Username: {
-                        required: "Lütfen kullanıcı adınızı girin"
+                        required: "Kullanıcı adı alanı zorunludur.",
+                        remote: "Bu kullanıcı adı zaten kullanımda."
                     },
                     Password: {
-                        required: "Lütfen şifrenizi girin"
+                        required: "Şifre alanı zorunludur.",
+                        minlength: "Şifre en az 8 karakter olmalıdır."
                     },
                     ConfirmPassword: {
-                        required: "Lütfen şifrenizi tekrar girin",
-                        equalTo: "Şifreler eşleşmiyor"
+                        required: "Şifre tekrar alanı zorunludur.",
+                        equalTo: "Şifreler eşleşmiyor."
                     }
                 },
-                submitHandler: function (form) {
-                    form.submit();
+                errorPlacement: function (error, element) {
+                    // Hataları gösterme
+                    Toastify({
+                        ...toastOptions,
+                        text: error.text(),
+                        backgroundColor: '#f8d7da',
+                        className: 'error-toast'
+                    }).showToast();
+                },
+                submitHandler: async function (form) {
+                    // Şifre kontrolünü tekrar yap
+                    if (!validatePassword(createPw.value)) {
+                        validatePassword(createPw.value);
+                        return false;
+                    }
+
+                    // Kullanıcı adı ve e-posta kontrolü
+                    const isUsernameValid = await checkUserExists('Username', usernameInput.value.trim());
+                    const isEmailValid = await checkUserExists('Email', emailInput.value.trim());
+
+                    // Her iki kontrol de başarılıysa kayıt işlemini başlat
+                    if (isUsernameValid && isEmailValid) {
+                        $(submitBtn).prop('disabled', true).text('Kaydediliyor...');
+
+                        try {
+                            const response = await $.ajax({
+                                type: "POST",
+                                url: form.action,
+                                data: $(form).serialize()
+                            });
+
+                            console.log("Kayıt API yanıtı:", response);
+
+                            if (response.Success) { // Başarı durumunu API yanıtınıza göre ayarlayın
+                                Toastify({
+                                    ...toastOptions,
+                                    text: 'Sisteme başarıyla kayıt oldunuz. Giriş sayfasına yönlendiriliyorsunuz...',
+                                    backgroundColor: '#c3e6cb',
+                                    className: 'success-toast'
+                                }).showToast();
+
+                                setTimeout(function () {
+                                    window.location.href = "/Login/Index";
+                                }, 3000);
+                            } else {
+                                Toastify({
+                                    ...toastOptions,
+                                    text: response.Message || 'Kayıt sırasında bir hata oluştu.',
+                                    backgroundColor: '#f8d7da',
+                                    className: 'error-toast'
+                                }).showToast();
+                            }
+                        } catch (error) {
+                            console.error("Kayıt API hatası:", error);
+                            const errorMessage = error.responseJSON && error.responseJSON.Message ?
+                                error.responseJSON.Message :
+                                'Kayıt işlemi sırasında bir hata oluştu.';
+                            Toastify({
+                                ...toastOptions,
+                                text: errorMessage,
+                                backgroundColor: '#f8d7da',
+                                className: 'error-toast'
+                            }).showToast();
+                        } finally {
+                            $(submitBtn).prop('disabled', false).text('Kayıt Ol');
+                        }
+                    }
                 }
+            });
+
+            $("input[name='Name'], input[name='Surname']").on('input', function () {
+                const value = $(this).val();
+                if (!/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]*$/i.test(value)) {
+                    Toastify({
+                        ...toastOptions,
+                        text: 'Ad ve soyad alanlarında sadece harf kullanabilirsiniz.',
+                        backgroundColor: '#f8d7da',
+                        className: 'error-toast'
+                    }).showToast();
+                    $(this).val(value.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/gi, ''));
+                }
+            });
+
+            // Input alanlarından is-invalid sınıfını kaldır
+            $("input[name='Name'], input[name='Surname'], #Username, #Email").on('input', function () {
+                $(this).removeClass('is-invalid');
             });
         });
     </script>
+
+
+
+
+
+
 </body>
 </html>

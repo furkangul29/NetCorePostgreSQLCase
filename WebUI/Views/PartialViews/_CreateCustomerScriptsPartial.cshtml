@@ -1,0 +1,115 @@
+﻿<script>
+        // Türkiye'nin 81 ili
+        const cities = [
+            "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir",
+            "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli",
+            "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari",
+            "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", "Kırşehir",
+            "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", "Nevşehir",
+            "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat",
+            "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman",
+            "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye",
+            "Düzce"
+        ];
+
+        // Şehirleri dropdown'a ekle
+        function populateCities() {
+            const citySelect = document.getElementById('Region');
+            cities.sort().forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+        }
+
+        // Sayfa yüklendiğinde şehirleri yükle
+        document.addEventListener('DOMContentLoaded', populateCities);
+
+     function showToast(message, type) {
+        Toastify({
+            text: message,
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            backgroundColor: type === 'error'
+                ? "linear-gradient(to right, #FF416C, #FF4B2B)"
+                : "linear-gradient(to right, #00b09b, #96c93d)",
+            className: "rounded-lg shadow-lg",
+        }).showToast();
+    }
+
+    function validateForm(event) {
+        event.preventDefault(); // Formun otomatik gönderilmesini engelle
+        let isValid = true;
+        const firstName = document.getElementById("FirstName").value.trim();
+        const lastName = document.getElementById("LastName").value.trim();
+        const email = document.getElementById("Email").value.trim();
+        const region = document.getElementById("Region").value.trim();
+
+        // İsim validasyonları
+        if (firstName === "") {
+            showToast("Ad alanı boş bırakılamaz.", "error");
+            isValid = false;
+        } else if (firstName.length < 3) {
+            showToast("Ad en az 3 karakter olmalıdır.", "error");
+            isValid = false;
+        } else if (!/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/.test(firstName)) {
+            showToast("Ad sadece harf içerebilir.", "error");
+            isValid = false;
+        }
+
+        // Soyad validasyonları
+        if (lastName === "") {
+            showToast("Soyad alanı boş bırakılamaz.", "error");
+            isValid = false;
+        } else if (lastName.length < 2) {
+            showToast("Soyad en az 2 karakter olmalıdır.", "error");
+            isValid = false;
+        } else if (!/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/.test(lastName)) {
+            showToast("Soyad sadece harf içerebilir.", "error");
+            isValid = false;
+        }
+
+        // Email validasyonları
+        if (email === "") {
+            showToast("Email alanı boş bırakılamaz.", "error");
+            isValid = false;
+        } else if (!validateEmail(email)) {
+            showToast("Geçerli bir email adresi girin.", "error");
+            isValid = false;
+        }
+
+        // Şehir validasyonu
+        if (region === "") {
+            showToast("Lütfen bir şehir seçin.", "error");
+            isValid = false;
+        }
+
+        if (isValid) {
+            showToast("Müşteri ekleme işlemi başarıyla gerçekleşti.", "success");
+            setTimeout(() => {
+                document.getElementById("createCustomerForm").submit();
+            }, 2000); // 2 saniye sonra formu gönder
+        }
+    }
+
+    function validateEmail(email) {
+        const re = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+        return re.test(String(email).toLowerCase());
+    }
+
+    // Form submit event listener
+    document.getElementById("createCustomerForm").addEventListener("submit", validateForm);
+
+    // Real-time validation için input event listeners
+    document.querySelectorAll('.form-control').forEach(input => {
+        input.addEventListener('input', function () {
+            this.classList.remove('border-danger');
+            if (this.value.trim() !== '') {
+                this.classList.add('border-success');
+            }
+        });
+    });
+</script>

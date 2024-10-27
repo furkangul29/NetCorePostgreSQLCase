@@ -10,9 +10,13 @@ using WebUI.DTO.IdentityDtos.RegisterDtos;
 using static Duende.IdentityServer.IdentityServerConstants;
 using System.Net.Http.Headers;
 using WebUI.Services.TokenServices;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebUI.Controllers
 {
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme, Policy = "users.write")]
     public class RegisterController : Controller
     {
         private readonly IConfiguration _configuration;
@@ -31,67 +35,78 @@ namespace WebUI.Controllers
         }
 
         [HttpGet]
+        [RequireScope("users.write")]
         public IActionResult Index()
         {
             // Token ve roleId'yi oturumdan al
             var token = _tokenService.GetToken();
             var roleId = HttpContext.Session.GetString("RoleId");
 
+            _logger.LogInformation("Kayıt formu gösteriliyor. Token: {Token}, RoleId: {RoleId}", token, roleId);
 
             // Kayıt formunu döndür
-            var model = new CreateUserViewModel { RoleId = roleId,Token=token };
+            var model = new CreateUserViewModel { RoleId = roleId, Token = token };
             return View(model); // Register.cshtml sayfasına gönderir
         }
 
         [HttpPost]
+        [RequireScope("users.write")]
         public async Task<IActionResult> Index(CreateUserViewModel createUserViewModel)
         {
             if (!ModelState.IsValid)
             {
+                _logger.LogWarning("Geçersiz model durumu. Kayıt formu yeniden gösteriliyor.");
                 return View(createUserViewModel);
             }
 
             // Şifre doğrulama
             if (createUserViewModel.Password != createUserViewModel.ConfirmPassword)
             {
+                _logger.LogWarning("Şifreler eşleşmiyor.");
                 ModelState.AddModelError("ConfirmPassword", "Şifreler eşleşmiyor.");
                 return View(createUserViewModel);
             }
 
             try
             {
-                // RoleId'yi Session'dan alın
-                var roleId = HttpContext.Session.GetInt32("RoleId");
-
-                if (!roleId.HasValue)
-                {
-                    ModelState.AddModelError("", "Oturum bilgileriniz geçersiz. Lütfen tekrar giriş yapın.");
-                    return RedirectToAction("Index", "Login");
-                }
-
-                // Kullanıcı kaydı için DTO oluşturun
-                var registerDto = new
+ 
+                   // Kullanıcı kaydı için DTO oluşturun
+                   var registerDto = new
                 {
                     Username = createUserViewModel.Username,
                     Password = createUserViewModel.Password,
                     Email = createUserViewModel.Email,
                     Name = createUserViewModel.Name,
                     Surname = createUserViewModel.Surname,
-                    RoleId = roleId.Value
+                    RoleId = createUserViewModel.RoleId
                 };
+
+                _logger.LogInformation("Kayıt işlemi başlatılıyor. Kullanıcı: {Username}, Email: {Email}, RoleId: {RoleId}",
+                    createUserViewModel.Username, createUserViewModel.Email, createUserViewModel.RoleId);
 
                 // Token ile client oluşturup istek gönderin
                 var client = _tokenService.CreateClientWithToken(); // Token'i kullanarak client oluşturun
                 var jsonData = JsonConvert.SerializeObject(registerDto);
                 var stringContent = new StringContent(jsonData, Encoding.UTF8, "application/json");
 
+                _logger.LogInformation("Kayıt isteği API'ye gönderiliyor: {Endpoint}", "http://localhost:3001/api/Registers");
+
                 var response = await client.PostAsync("http://localhost:3001/api/Registers", stringContent);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
                 {
+                    _logger.LogInformation("Kullanıcı başarıyla oluşturuldu: {Username}", createUserViewModel.Username);
                     TempData["SuccessMessage"] = "Kullanıcı başarıyla oluşturuldu.";
                     return RedirectToAction("Index", "Login");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) // 400 Bad Request kontrolü
+                {
+                     responseContent = await response.Content.ReadAsStringAsync();
+                    // API'den dönen hata mesajını alın ve ModelState'e ekleyin
+                    var error = JsonConvert.DeserializeObject<ErrorResponse>(responseContent);
+                    ModelState.AddModelError(error.Key, error.Message);
+                    return View(createUserViewModel);
                 }
 
                 // API'den dönen hata mesajını kontrol et ve ekrana yansıt
@@ -106,12 +121,13 @@ namespace WebUI.Controllers
                     errorMessage = responseContent;
                 }
 
+                _logger.LogWarning("API isteği başarısız. Hata: {ErrorMessage}", errorMessage);
                 ModelState.AddModelError("", errorMessage);
                 return View(createUserViewModel);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Kullanıcı kaydı sırasında bir hata oluştu");
+                _logger.LogError(ex, "Kullanıcı kaydı sırasında bir hata oluştu. Kullanıcı: {Username}, Email: {Email}", createUserViewModel.Username, createUserViewModel.Email);
                 ModelState.AddModelError("", "İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
                 return View(createUserViewModel);
             }
@@ -121,9 +137,9 @@ namespace WebUI.Controllers
 
     // API'den gelen hata mesajları için yardımcı sınıf
     public class ErrorResponse
-        {
-            public string Message { get; set; }
-            public object Errors { get; set; }
-        }
-
+    {
+        public string Key { get; set; } // Bu özellik eksikti
+        public string Message { get; set; }
     }
+
+}

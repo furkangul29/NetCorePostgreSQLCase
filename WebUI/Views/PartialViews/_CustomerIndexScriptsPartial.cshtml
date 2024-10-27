@@ -1,0 +1,269 @@
+﻿<script>
+          document.addEventListener("DOMContentLoaded", function () {
+        // Filtre Toggle İşlemi
+        const filterToggle = document.getElementById("filterToggle");
+        filterToggle.addEventListener("click", function (e) {
+            if (!('@ViewBag.HasFilterPermission' == 'True')) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Yetkisiz Erişim',
+                    text: 'Bu alana erişim yetkiniz yok. Lütfen yetkili kullanıcı ile oturum açınız.'
+                });
+            }
+            else {
+                $("#filterContent").slideToggle();
+                $(this).find("i:last").toggleClass("fa-chevron-down fa-chevron-up");
+            }
+        });
+
+        // Sıralama İşlemleri
+        const sortStates = new Map();
+
+        const compareFunctions = {
+            index: (a, b, asc) => {
+                const v1 = parseInt(getCellValue(a, 0));
+                const v2 = parseInt(getCellValue(b, 0));
+                return asc ? v1 - v2 : v2 - v1;
+            },
+            date: (a, b, asc) => {
+                const v1 = parseDate(getCellValue(a, 5));
+                const v2 = parseDate(getCellValue(b, 5));
+                return asc ? v1 - v2 : v2 - v1;
+            },
+            text: (a, b, asc) => {
+                const v1 = getCellValue(a, 0).toLowerCase();
+                const v2 = getCellValue(b, 0).toLowerCase();
+                return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            }
+        };
+
+        function parseDate(dateStr) {
+            const [day, month, year] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day).getTime();
+        }
+
+        const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('tr-TR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        const updateSortIndicator = (th, sortState) => {
+            th.closest('tr').querySelectorAll('th').forEach(header => {
+                header.classList.remove('asc', 'desc');
+            });
+
+            if (sortState === 'asc') {
+                th.classList.add('asc');
+            } else if (sortState === 'desc') {
+                th.classList.add('desc');
+            }
+        };
+
+        // Sıralama Event Listener'ları
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            const sortKey = th.getAttribute('data-sort');
+            sortStates.set(th, 'none');
+
+            th.addEventListener('click', () => {
+                const table = th.closest('table');
+                const tbody = table.querySelector('tbody');
+                const currentState = sortStates.get(th);
+
+                let newState;
+                switch (currentState) {
+                    case 'none': newState = 'asc'; break;
+                    case 'asc': newState = 'desc'; break;
+                    case 'desc': newState = 'none'; break;
+                }
+                sortStates.set(th, newState);
+
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                if (newState === 'none') {
+                    rows.sort((a, b) => compareFunctions.index(a, b, true));
+                } else {
+                    let compareFunc;
+                    if (sortKey === 'date') {
+                        compareFunc = compareFunctions.date;
+                    } else if (sortKey === 'index') {
+                        compareFunc = compareFunctions.index;
+                    } else {
+                        compareFunc = (a, b, asc) => {
+                            const columnIndex = Array.from(th.parentNode.children).indexOf(th);
+                            const v1 = getCellValue(a, columnIndex).toLowerCase();
+                            const v2 = getCellValue(b, columnIndex).toLowerCase();
+                            return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+                        };
+                    }
+
+                    rows.sort((a, b) => compareFunc(a, b, newState === 'asc'));
+                }
+
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+                updateSortIndicator(th, newState);
+            });
+        });
+
+        // Filtreleme İşlemleri
+        let filterTimer;
+        const filterDelay = 300;
+
+        $('.filter-input').on('input', function() {
+            if (!('@ViewBag.HasFilterPermission' === 'True')) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Yetkisiz Erişim',
+                    text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+                });
+                return;
+            }
+
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(filterCustomers, filterDelay);
+        });
+
+        $('#resetFilters').on('click', function() {
+            if (!('@ViewBag.HasFilterPermission' === 'True')) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Yetkisiz Erişim',
+                    text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+                });
+                return;
+            }
+
+            $('#filterForm')[0].reset();
+            filterCustomers();
+        });
+
+        function filterCustomers() {
+            if (!('@ViewBag.HasFilterPermission' === 'True')) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Yetkisiz Erişim',
+                    text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
+                });
+                return;
+            }
+
+            $.ajax({
+                url: '/Customer/Index',
+                type: 'GET',
+                data: {
+                    firstNameFilter: $('#firstNameFilter').val(),
+                    lastNameFilter: $('#lastNameFilter').val(),
+                    regionFilter: $('#regionFilter').val(),
+                    emailDomainFilter: $('#emailDomainFilter').val(),
+                    startDate: $('#startDate').val(),
+                    endDate: $('#endDate').val()
+                },
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    updateTable(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Filtreleme hatası:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Hata!',
+                        text: 'Filtreleme sırasında bir hata oluştu'
+                    });
+                }
+            });
+        }
+
+        function updateTable(customers) {
+            const tbody = $('#customerTableBody');
+            tbody.empty();
+
+            if (customers && customers.length > 0) {
+                customers.forEach((customer, index) => {
+                    const row = `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${customer.firstName}</td>
+                            <td>${customer.lastName}</td>
+                            <td>${customer.email}</td>
+                            <td>${customer.region}</td>
+                            <td>${formatDate(customer.registrationDate)}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button onclick="deleteCustomerConfirm(${customer.id})"
+                                        class="btn btn-delete me-2">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    <a href="/Customer/UpdateCustomer/${customer.id}"
+                                        class="btn btn-edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+            } else {
+                tbody.append(`
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            <i class="fas fa-search me-2"></i>
+                            Müşteri bulunamadı
+                        </td>
+                    </tr>
+                `);
+            }
+        }
+    });
+
+    // Müşteri Silme İşlemi
+    function deleteCustomerConfirm(id) {
+        Swal.fire({
+            title: 'Bu Müşteriyi veritabanından silmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Hayır, iptal et!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("/Customer/DeleteCustomer/" + id, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    Swal.fire({
+                        title: 'Silindi!',
+                        text: 'Müşteri başarıyla silindi.',
+                        icon: 'success',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        window.location.href = '/Customer/Index?deleted=true';
+                    });
+                })
+                .catch(error => {
+                    Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
+                });
+            }
+        });
+    }
+
+    // Hoş Geldiniz Mesajı
+    if (document.querySelector('[data-show-welcome="true"]')) {
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = document.querySelector('[data-username]').dataset.username;
+            showToast("Hoş geldiniz, " + username, "success");
+        });
+    }
+</script>

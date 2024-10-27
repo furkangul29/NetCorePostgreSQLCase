@@ -163,12 +163,13 @@ namespace WebUI.Services.Concrete
             });
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, userInfoResponse.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? signInDto.Username),
-                new Claim(ClaimTypes.Role, userRole ?? "DefaultRole")
-            };
+{
+    new Claim(ClaimTypes.Name, userInfoResponse.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? signInDto.Username),
+    new Claim(ClaimTypes.Role, userRole ?? "DefaultRole")
+};
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme, ClaimTypes.Name, ClaimTypes.Role);
+
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
             await _httpContextAccessor.HttpContext.SignInAsync(
