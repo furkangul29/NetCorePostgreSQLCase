@@ -1,0 +1,101 @@
+﻿
+.table-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.table th {
+    background: #f8f9fa;
+    position: relative;
+    cursor: pointer;
+    padding: 12px 15px;
+}
+
+.sort-icon {
+    margin-left: 5px;
+    font-size: 0.8em;
+    color: #999;
+}
+
+    .sort-icon.active {
+        color: #0d6efd;
+    }
+
+.table td {
+    vertical-align: middle;
+    padding: 12px 15px;
+}
+
+.btn-delete {
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    padding: 5px 10px;
+    transition: all 0.2s;
+}
+
+    .btn-delete:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+.btn-edit {
+    color: #198754;
+    border: 1px solid #198754;
+    padding: 5px 10px;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+    .btn-edit:hover {
+        background: #198754;
+        color: white;
+    }
+
+.date-cell {
+    white-space: nowrap;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    font-size: 0.85em;
+    color: #495057;
+}
+
+.btn-add-user {
+    background: linear-gradient(45deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+    .btn-add-user:hover {
+        background: linear-gradient(45deg, #1976D2, #1565C0);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        color: white;
+    }
+
+    .btn-add-user:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .btn-add-user i {
+        font-size: 1.1em;
+    }

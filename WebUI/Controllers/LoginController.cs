@@ -1,4 +1,5 @@
 ﻿using Duende.IdentityServer.Extensions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -80,6 +81,49 @@ namespace WebUI.Controllers
                 _logger.LogInformation("Giriş işlemi tamamlandı. Kullanıcı: {Username}, Süre: {Duration} ms", signInDto.Username, (endTime - startTime).TotalMilliseconds);
             }
         }
+        
+        
+        [HttpPost]
+        public async Task<IActionResult> LogOut()
+        {
+            var username = HttpContext.Session.GetString("Username");
+            var startTime = DateTime.Now;
+            _logger.LogInformation("Çıkış işlemi başlatıldı. Kullanıcı: {Username}, Zaman: {Time}", username, startTime);
 
+            try
+            {
+                // Session'daki token ve diğer bilgileri temizle
+                HttpContext.Session.Remove("AccessToken");
+                HttpContext.Session.Remove("Username");
+                HttpContext.Session.Remove("ShowWelcomeMessage");
+
+                // Identity işlemleri
+                await HttpContext.SignOutAsync();
+
+                _logger.LogInformation("Kullanıcı başarıyla çıkış yaptı: {Username}. Çıkış zamanı: {Time}",
+                    username, DateTime.Now);
+
+                return RedirectToAction("Index", "Login");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Çıkış işlemi sırasında bir hata oluştu. Kullanıcı: {Username}", username);
+                TempData["Error"] = "Çıkış işlemi sırasında bir hata oluştu.";
+                return RedirectToAction("Index", "Login");
+            }
+            finally
+            {
+                var endTime = DateTime.Now;
+                _logger.LogInformation("Çıkış işlemi tamamlandı. Kullanıcı: {Username}, Süre: {Duration} ms",
+                    username, (endTime - startTime).TotalMilliseconds);
+            }
+        }
+
+        [HttpGet("LogOut")]
+        public IActionResult LogoutPage()
+        {
+            _logger.LogInformation("Çıkış sayfasına erişildi. Erişim zamanı: {Time}", DateTime.Now);
+            return RedirectToAction("Index", "Login");
+        }
     }
 }

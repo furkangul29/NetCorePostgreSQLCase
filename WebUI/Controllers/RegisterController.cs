@@ -35,6 +35,7 @@ namespace WebUI.Controllers
         }
 
         [HttpGet]
+        [RequireScope("users.write")]
         public IActionResult Index()
         {
             // Token ve roleId'yi oturumdan al
@@ -49,6 +50,7 @@ namespace WebUI.Controllers
         }
 
         [HttpPost]
+        [RequireScope("users.write")]
         public async Task<IActionResult> Index(CreateUserViewModel createUserViewModel)
         {
             if (!ModelState.IsValid)
@@ -67,29 +69,20 @@ namespace WebUI.Controllers
 
             try
             {
-                // RoleId'yi Session'dan alın
-                var roleId = HttpContext.Session.GetInt32("RoleId");
-
-                if (!roleId.HasValue)
-                {
-                    _logger.LogWarning("Oturum geçersiz. RoleId eksik. Kullanıcı Login sayfasına yönlendiriliyor.");
-                    ModelState.AddModelError("", "Oturum bilgileriniz geçersiz. Lütfen tekrar giriş yapın.");
-                    return RedirectToAction("Index", "Login");
-                }
-
-                // Kullanıcı kaydı için DTO oluşturun
-                var registerDto = new
+ 
+                   // Kullanıcı kaydı için DTO oluşturun
+                   var registerDto = new
                 {
                     Username = createUserViewModel.Username,
                     Password = createUserViewModel.Password,
                     Email = createUserViewModel.Email,
                     Name = createUserViewModel.Name,
                     Surname = createUserViewModel.Surname,
-                    RoleId = roleId.Value
+                    RoleId = createUserViewModel.RoleId
                 };
 
                 _logger.LogInformation("Kayıt işlemi başlatılıyor. Kullanıcı: {Username}, Email: {Email}, RoleId: {RoleId}",
-                    createUserViewModel.Username, createUserViewModel.Email, roleId);
+                    createUserViewModel.Username, createUserViewModel.Email, createUserViewModel.RoleId);
 
                 // Token ile client oluşturup istek gönderin
                 var client = _tokenService.CreateClientWithToken(); // Token'i kullanarak client oluşturun
@@ -106,6 +99,14 @@ namespace WebUI.Controllers
                     _logger.LogInformation("Kullanıcı başarıyla oluşturuldu: {Username}", createUserViewModel.Username);
                     TempData["SuccessMessage"] = "Kullanıcı başarıyla oluşturuldu.";
                     return RedirectToAction("Index", "Login");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) // 400 Bad Request kontrolü
+                {
+                     responseContent = await response.Content.ReadAsStringAsync();
+                    // API'den dönen hata mesajını alın ve ModelState'e ekleyin
+                    var error = JsonConvert.DeserializeObject<ErrorResponse>(responseContent);
+                    ModelState.AddModelError(error.Key, error.Message);
+                    return View(createUserViewModel);
                 }
 
                 // API'den dönen hata mesajını kontrol et ve ekrana yansıt
@@ -137,8 +138,8 @@ namespace WebUI.Controllers
     // API'den gelen hata mesajları için yardımcı sınıf
     public class ErrorResponse
     {
+        public string Key { get; set; } // Bu özellik eksikti
         public string Message { get; set; }
-        public object Errors { get; set; }
     }
 
 }

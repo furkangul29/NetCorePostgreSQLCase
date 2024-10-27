@@ -15,7 +15,8 @@ namespace WebUI.Services.TokenServices
         {
             if (context.Request.Path.StartsWithSegments("/Customer") ||
                 context.Request.Path.StartsWithSegments("/Register")||
-                context.Request.Path.StartsWithSegments("/User"))
+                context.Request.Path.StartsWithSegments("/User") ||
+                context.Request.Path.StartsWithSegments("/UILayout"))
             {
                 var token = context.Session.GetString("Token");
 

@@ -32,7 +32,6 @@ builder.Services.AddScoped<ICustomerService, CustomerManager>();
 builder.Services.AddScoped<ICustomerDal, CustomerDal>();
 
 
-builder.Services.AddScoped<IUserDal, UserDal>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

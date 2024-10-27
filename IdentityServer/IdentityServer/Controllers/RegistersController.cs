@@ -36,8 +36,24 @@ namespace IdentityServer.Controllers
         public async Task<IActionResult> UserRegister(UserRegisterDto userRegisterDto)
         {
             var kullaniciAdi = userRegisterDto.Username;
+            var email = userRegisterDto.Email;
             _logger.LogInformation("Kullanıcı {KullaniciAdi} için kayıt denemesi yapıldı: {Zaman}", kullaniciAdi, DateTime.UtcNow);
 
+            // Kullanıcı adı kontrolü
+            var existingUserByUsername = await _userManager.FindByNameAsync(kullaniciAdi);
+            if (existingUserByUsername != null)
+            {
+                _logger.LogWarning("Kullanıcı adı zaten mevcut: {KullaniciAdi}", kullaniciAdi);
+                return BadRequest(new { Key = "Username", Message = "Bu kullanıcı adı zaten alınmış." });
+            }
+
+            // E-posta kontrolü
+            var existingUserByEmail = await _userManager.FindByEmailAsync(email);
+            if (existingUserByEmail != null)
+            {
+                _logger.LogWarning("E-posta zaten mevcut: {Email}", email);
+                return BadRequest(new { Key = "Email", Message = "Bu e-posta zaten kayıtlı." });
+            }
             // İlk olarak rolün varlığını kontrol et
             var role = await _roleManager.FindByIdAsync(userRegisterDto.RoleId.ToString());
             if (role == null)
@@ -45,6 +61,7 @@ namespace IdentityServer.Controllers
                 _logger.LogWarning("Kullanıcı {KullaniciAdi} için belirtilen rol bulunamadı (ID: {RoleId})", kullaniciAdi, userRegisterDto.RoleId);
                 return BadRequest($"Belirtilen rol bulunamadı (ID: {userRegisterDto.RoleId})");
             }
+           
 
             var user = new ApplicationUser()
             {
@@ -98,6 +115,11 @@ namespace IdentityServer.Controllers
                     kullaniciAdi, DateTime.UtcNow, ex.Message);
                 return StatusCode(500, "Kayıt işlemi sırasında bir hata oluştu.");
             }
+        }
+        public class ErrorResponse
+        {
+            public string Key { get; set; }
+            public string Message { get; set; }
         }
     }
 }

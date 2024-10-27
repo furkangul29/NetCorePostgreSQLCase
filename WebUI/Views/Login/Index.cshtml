@@ -3,21 +3,18 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Giriş Sayfası</title>
+    <link rel="stylesheet" href="/css/LoginIndex/loginIndex.css">
 
-    <!-- Font and Style -->
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/css/opensans-font.css">
-    <link rel="stylesheet" type="text/css" href="~/colorlib-regform-30/fonts/line-awesome/css/line-awesome.min.css">
-    <link rel="stylesheet" href="~/colorlib-regform-30/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
+<body>
+    <!-- Toastify Notifications -->
+    <div id="toastify-container"></div>
 
-<body class="form-v4">
     <div class="page-content">
         <div class="form-v4-content">
             <div class="form-left">
@@ -30,11 +27,11 @@
                 <h2>CRM Giriş Formu</h2>
                 <div class="form-row">
                     <label for="username">Kullanıcı Adı</label>
-                    <input type="text" id="username" asp-for="Username" class="input-text" >
+                    <input type="text" id="username" asp-for="Username" class="input-text">
                 </div>
                 <div class="form-row">
                     <label for="password">Şifre</label>
-                    <input type="password" id="password" asp-for="Password" class="input-text" >
+                    <input type="password" id="password" asp-for="Password" class="input-text">
                 </div>
                 <div class="form-row-last">
                     <button type="submit" class="register" style="height:35px">Giriş Yap</button>
@@ -42,13 +39,21 @@
             </form>
         </div>
     </div>
-
     <!-- JQuery and Validation -->
     <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/additional-methods.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script>
+  const toastOptions = {
+    position: 'top-right',
+    autoClose: 3000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progressBar: true
+  };
         // Toastify fonksiyonunu genişletelim
         function showToast(message, type) {
             Toastify({

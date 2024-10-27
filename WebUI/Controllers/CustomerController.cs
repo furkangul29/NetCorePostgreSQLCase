@@ -34,7 +34,8 @@ namespace WebUI.Controllers
         [HttpGet]
         public async Task<IActionResult> Index(string firstNameFilter, string lastNameFilter, string regionFilter, string emailDomainFilter, DateTime? startDate, DateTime? endDate)
         {
-            
+            CustomerViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             ViewBag.Username = userName;
 
@@ -217,6 +218,14 @@ namespace WebUI.Controllers
                 _logger.LogError(ex, "{user} tarafından ID'si {MusteriId} olan müşteri silinirken hata meydana geldi: {HataMesaji}", userName, id, ex.Message);
                 return BadRequest($"Müşteri silinirken hata oluştu: {ex.Message}");
             }
+        }
+
+        void CustomerViewbagList()
+        {
+            ViewBag.v1 = "Ana Sayfa";
+            ViewBag.v2 = "Müşteriler";
+            ViewBag.v3 = "Müşteri Listesi";
+            ViewBag.v0 = "Müşteri İşlemleri";
         }
     }
 }

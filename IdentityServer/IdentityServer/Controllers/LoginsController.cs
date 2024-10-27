@@ -64,5 +64,24 @@ namespace IdentityServer.Controllers
                 return StatusCode(500, "Bir iç hata meydana geldi.");
             }
         }
+        [HttpPost("LogOut")]
+        public async Task<IActionResult> Logout()
+        {
+            var username = User.Identity?.Name;
+            _logger.LogInformation("Kullanıcı {KullaniciAdi} için çıkış işlemi başlatıldı: {Zaman}", username, DateTime.UtcNow);
+
+            try
+            {
+                await _signInManager.SignOutAsync();
+                _logger.LogInformation("Kullanıcı {KullaniciAdi} başarıyla çıkış yaptı: {Zaman}", username, DateTime.UtcNow);
+                return Ok(new { message = "Başarıyla çıkış yapıldı.", redirectUrl = "/Login" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kullanıcı {KullaniciAdi} çıkış yaparken hata oluştu: {Zaman} - Hata Mesajı: {HataMesaji}",
+                    username, DateTime.UtcNow, ex.Message);
+                return StatusCode(500, "Çıkış işlemi sırasında bir hata oluştu.");
+            }
+        }
     }
 }

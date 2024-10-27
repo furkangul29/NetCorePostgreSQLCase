@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
 using MimeKit;
 using System.Security.Claims;
+using WebUI.DTO.IdentityDtos.RegisterDtos;
 using WebUI.DTO.IdentityDtos.UserDtos;
 using WebUI.Models;
 using WebUI.Services.TokenServices;
@@ -13,7 +16,7 @@ using WebUI.Services.UserIdentityServices;
 
 namespace WebUI.Controllers
 {
-    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme, Policy = "users.read")]
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme, Policy = "customers.read")]
     public class UserController : Controller
     {
         private readonly IUserIdentityService _userIdentityService;
@@ -36,9 +39,11 @@ namespace WebUI.Controllers
             _configuration = configuration;
             _tokenService = tokenService;
         }
-
+        [RequireScope("users.read")]
         public async Task<IActionResult> UserList()
         {
+            UserViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             
             try
@@ -253,5 +258,15 @@ namespace WebUI.Controllers
 
             return RedirectToAction(nameof(UserList));
         }
+
+
+        void UserViewbagList()
+        {
+            ViewBag.v1 = "Ana Sayfa";
+            ViewBag.v2 = "Kullanıcılar";
+            ViewBag.v3 = "Kullanıcı Listesi";
+            ViewBag.v0 = "Kullanıcı İşlemleri";
+        }
+
     }
 }

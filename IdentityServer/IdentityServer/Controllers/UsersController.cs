@@ -126,6 +126,7 @@ namespace IdentityServer.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(string id)
         {
@@ -283,5 +284,7 @@ namespace IdentityServer.Controllers
                 return StatusCode(500, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
             }
         }
+       
+
     }
 }

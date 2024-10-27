@@ -68,7 +68,6 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true; 
 });
 
-builder.Services.AddTransient<IClaimsTransformation, AddNameClaimTransformation>();
 
 
 builder.Services.AddAuthentication(options =>
@@ -162,7 +161,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<ICustomerDal, CustomerDal>();
-builder.Services.AddScoped<IUserDal, UserDal>();
 
 
 //builder.Services.AddScoped<IIdentityServerInteractionService, IdentityServerInteractionService>();
