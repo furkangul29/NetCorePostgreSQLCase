@@ -72,12 +72,16 @@ namespace WebUI.Controllers
 
         public async Task<IActionResult> CreateUser()
         {
+            UserViewbagList();
+
             return View();
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateUser(CreateUserViewModel model)
         {
+            UserViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             string token = _tokenService.GetToken();
 
@@ -141,6 +145,8 @@ namespace WebUI.Controllers
         [HttpGet]
         public async Task<IActionResult> UpdateUser(string id)
         {
+            UserViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
             {
@@ -190,6 +196,8 @@ namespace WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateUser(UpdateUserDto model)
         {
+            UserViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
             {
@@ -228,6 +236,8 @@ namespace WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteUser(string id)
         {
+            UserViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             try
             {

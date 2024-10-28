@@ -55,23 +55,17 @@ namespace WebUI.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Geçersiz model durumu. Kayıt formu yeniden gösteriliyor.");
-                return View(createUserViewModel);
+                return Json(new { Success = false, Message = "Lütfen tüm alanları doldurunuz.", Errors = ModelState.ToDictionary() });
             }
 
-            // Şifre doğrulama
             if (createUserViewModel.Password != createUserViewModel.ConfirmPassword)
             {
-                _logger.LogWarning("Şifreler eşleşmiyor.");
-                ModelState.AddModelError("ConfirmPassword", "Şifreler eşleşmiyor.");
-                return View(createUserViewModel);
+                return Json(new { Success = false, Message = "Şifreler eşleşmiyor." });
             }
 
             try
             {
- 
-                   // Kullanıcı kaydı için DTO oluşturun
-                   var registerDto = new
+                var registerDto = new
                 {
                     Username = createUserViewModel.Username,
                     Password = createUserViewModel.Password,
@@ -81,35 +75,23 @@ namespace WebUI.Controllers
                     RoleId = createUserViewModel.RoleId
                 };
 
-                _logger.LogInformation("Kayıt işlemi başlatılıyor. Kullanıcı: {Username}, Email: {Email}, RoleId: {RoleId}",
-                    createUserViewModel.Username, createUserViewModel.Email, createUserViewModel.RoleId);
-
-                // Token ile client oluşturup istek gönderin
-                var client = _tokenService.CreateClientWithToken(); // Token'i kullanarak client oluşturun
+                var client = _tokenService.CreateClientWithToken();
                 var jsonData = JsonConvert.SerializeObject(registerDto);
                 var stringContent = new StringContent(jsonData, Encoding.UTF8, "application/json");
-
-                _logger.LogInformation("Kayıt isteği API'ye gönderiliyor: {Endpoint}", "http://localhost:3001/api/Registers");
 
                 var response = await client.PostAsync("http://localhost:3001/api/Registers", stringContent);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("Kullanıcı başarıyla oluşturuldu: {Username}", createUserViewModel.Username);
-                    TempData["SuccessMessage"] = "Kullanıcı başarıyla oluşturuldu.";
-                    return RedirectToAction("Index", "Login");
+                    return Json(new { Success = true, Message = "Kullanıcı başarıyla oluşturuldu." });
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) // 400 Bad Request kontrolü
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
-                     responseContent = await response.Content.ReadAsStringAsync();
-                    // API'den dönen hata mesajını alın ve ModelState'e ekleyin
                     var error = JsonConvert.DeserializeObject<ErrorResponse>(responseContent);
-                    ModelState.AddModelError(error.Key, error.Message);
-                    return View(createUserViewModel);
+                    return Json(new { Success = false, Message = error.Message, Key = error.Key });
                 }
 
-                // API'den dönen hata mesajını kontrol et ve ekrana yansıt
                 var errorMessage = "Kayıt işlemi başarısız oldu.";
                 try
                 {
@@ -121,17 +103,15 @@ namespace WebUI.Controllers
                     errorMessage = responseContent;
                 }
 
-                _logger.LogWarning("API isteği başarısız. Hata: {ErrorMessage}", errorMessage);
-                ModelState.AddModelError("", errorMessage);
-                return View(createUserViewModel);
+                return Json(new { Success = false, Message = errorMessage });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Kullanıcı kaydı sırasında bir hata oluştu. Kullanıcı: {Username}, Email: {Email}", createUserViewModel.Username, createUserViewModel.Email);
-                ModelState.AddModelError("", "İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
-                return View(createUserViewModel);
+                _logger.LogError(ex, "Kullanıcı kaydı sırasında bir hata oluştu.");
+                return Json(new { Success = false, Message = "İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
             }
         }
+
 
     }
 

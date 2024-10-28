@@ -1,8 +1,8 @@
 ﻿<script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('updateUserForm');
 
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
             const newRole = this.querySelector('select[name="NewRoleId"]').value;
             if (!newRole) {
@@ -17,7 +17,7 @@
                 }).showToast();
                 return;
             }
-           try {
+            try {
                 const formData = new FormData(this);
                 const response = await fetch(this.action, {
                     method: 'POST',
