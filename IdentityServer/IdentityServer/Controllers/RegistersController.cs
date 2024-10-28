@@ -52,7 +52,7 @@ namespace IdentityServer.Controllers
             if (existingUserByEmail != null)
             {
                 _logger.LogWarning("E-posta zaten mevcut: {Email}", email);
-                return BadRequest(new { Key = "Email", Message = "Bu e-posta zaten kayıtlı." });
+                return BadRequest(new { Key = "Email", Message = "Bu e-posta sistemimizde zaten kayıtlı." });
             }
             // İlk olarak rolün varlığını kontrol et
             var role = await _roleManager.FindByIdAsync(userRegisterDto.RoleId.ToString());

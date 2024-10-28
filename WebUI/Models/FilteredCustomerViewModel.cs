@@ -12,6 +12,8 @@ namespace WebUI.Models
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public bool HasFilterPermission { get; set; }
+        public bool ShowWelcomeMessage { get; set; }
+        public string Username { get; set; }
 
     }
 }

@@ -37,7 +37,15 @@ namespace WebUI.Controllers
             CustomerViewbagList();
 
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
-            ViewBag.Username = userName;
+            var showWelcomeMessage = (bool)(TempData["ShowWelcomeMessage"] ?? false);
+            var tempUsername = (string)TempData["Username"] ?? "";
+
+            // TempData değerlerini bir sonraki istek için sakla
+            if (showWelcomeMessage)
+            {
+                TempData.Keep("ShowWelcomeMessage");
+                TempData.Keep("Username");
+            }
 
             _logger.LogWarning("Müşteri listesi sayfasına {user} tarafından erişildi.", userName);
 
@@ -61,7 +69,9 @@ namespace WebUI.Controllers
                 EmailFilter = emailDomainFilter,
                 StartDate = startDate,
                 EndDate = endDate,
-                HasFilterPermission = ViewBag.HasFilterPermission 
+                HasFilterPermission = ViewBag.HasFilterPermission,
+                ShowWelcomeMessage = showWelcomeMessage,
+                Username = tempUsername 
             };
 
            
@@ -111,6 +121,8 @@ namespace WebUI.Controllers
         [HttpGet]
         public IActionResult CreateCustomer()
         {
+            CustomerViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             _logger.LogWarning("Yeni müşteri oluşturma sayfası {user} tarafından açıldı.", userName);
             return View();
@@ -145,6 +157,8 @@ namespace WebUI.Controllers
         [HttpGet]
         public async Task<IActionResult> UpdateCustomer(int id)
         {
+            CustomerViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
             _logger.LogWarning("{user} tarafından ID'si {MusteriId} olan müşterinin güncelleme sayfası açıldı.", userName, id);
 
@@ -162,6 +176,8 @@ namespace WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateCustomer(int id, UpdateCustomerDto updateCustomerDto)
         {
+            CustomerViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (!ModelState.IsValid)
@@ -196,6 +212,8 @@ namespace WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
+            CustomerViewbagList();
+
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
             try

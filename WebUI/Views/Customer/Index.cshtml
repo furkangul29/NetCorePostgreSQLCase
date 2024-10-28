@@ -1,188 +1,229 @@
 ﻿@using Microsoft.AspNetCore.Http
+
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+
 @model FilteredCustomerViewModel
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+
+
 @{
     Layout = "~/Views/UILayout/Index.cshtml";
     ViewData["Title"] = "Customer List";
+
     int count = 0;
 }
 
 
-<style>
-    .filter-section {
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        overflow: hidden;
-    }
+<head>
+    ... diğer kodlar ...
 
-    .filter-header {
-        padding: 15px 20px;
-        background: #f8f9fa;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: all 0.3s;
-    }
+    <!-- Önce jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 
-    .filter-header:hover {
-        background: #e9ecef;
-    }
+    <!-- Sonra Toastr -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <style>
+        .filter-section {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
 
-    .filter-content {
-        padding: 20px;
-        display: none;
-    }
+        .filter-header {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
 
-    .filter-content.show {
-        display: block;
-        animation: slideDown 0.3s ease-out;
-    }
+            .filter-header:hover {
+                background: #e9ecef;
+            }
 
-    .filter-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 15px;
-        margin-bottom: 15px;
-    }
+        .filter-content {
+            padding: 20px;
+            display: none;
+        }
 
-    .filter-group {
-        position: relative;
-    }
+            .filter-content.show {
+                display: block;
+                animation: slideDown 0.3s ease-out;
+            }
 
-    .filter-icon {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6c757d;
-    }
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
 
-    .filter-input {
-        padding-left: 35px;
-        border-radius: 5px;
-        border: 1px solid #ced4da;
-        height: 38px;
-        width: 100%;
-        transition: all 0.2s;
-    }
+        .filter-group {
+            position: relative;
+        }
 
-    .filter-input:focus {
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.15);
-    }
+        .filter-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
 
-    .btn-reset {
-        background: #dc3545;
-        color: white;
-        padding: 8px 15px;
-        border-radius: 5px;
-        border: none;
-        transition: all 0.2s;
-    }
+        .filter-input {
+            padding-left: 35px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            height: 38px;
+            width: 100%;
+            transition: all 0.2s;
+        }
 
-    .btn-reset:hover {
-        background: #c82333;
-        transform: translateY(-1px);
-    }
+            .filter-input:focus {
+                border-color: #80bdff;
+                box-shadow: 0 0 0 0.2rem rgba(0,123,255,.15);
+            }
 
-    .table-container {
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        padding: 20px;
-        overflow-x: auto;
-    }
-
-    .table th {
-        background: #f8f9fa;
-        position: relative;
-        cursor: pointer;
-        padding-right: 25px !important;
-    }
-
-    .table th::after {
-        content: '\f0dc';
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        position: absolute;
-        right: 8px;
-        color: #adb5bd;
-    }
-
-    .table th.asc::after {
-        content: '\f0de';
-        color: #0d6efd;
-    }
-
-    .table th.desc::after {
-        content: '\f0dd';
-        color: #0d6efd;
-    }
-
-    .btn-delete {
-        color: #dc3545;
-        border: 1px solid #dc3545;
-        padding: 5px 10px;
-        transition: all 0.2s;
-    }
-
-    .btn-delete:hover {
-        background: #dc3545;
-        color: white;
-    }
-
-    .btn-edit {
-        color: #198754;
-        border: 1px solid #198754;
-        padding: 5px 10px;
-        transition: all 0.2s;
-    }
-
-    .btn-edit:hover {
-        background: #198754;
-        color: white;
-    }
-
-    .btn-add-customer {
-        background: linear-gradient(45deg, #2196F3, #1976D2);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-        .btn-add-customer:hover {
-            background: linear-gradient(45deg, #1976D2, #1565C0);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        .btn-reset {
+            background: #dc3545;
             color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            transition: all 0.2s;
         }
 
-        .btn-add-customer:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            .btn-reset:hover {
+                background: #c82333;
+                transform: translateY(-1px);
+            }
+
+        .table-container {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            overflow-x: auto;
         }
 
-        .btn-add-customer i {
-            font-size: 1.1em;
+        .table th {
+            background: #f8f9fa;
+            position: relative;
+            cursor: pointer;
+            padding-right: 25px !important;
         }
 
-    @@keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>
+            .table th::after {
+                content: '\f0dc';
+                font-family: "Font Awesome 5 Free";
+                font-weight: 900;
+                position: absolute;
+                right: 8px;
+                color: #adb5bd;
+            }
+
+            .table th.asc::after {
+                content: '\f0de';
+                color: #0d6efd;
+            }
+
+            .table th.desc::after {
+                content: '\f0dd';
+                color: #0d6efd;
+            }
+
+        .btn-delete {
+            color: #dc3545;
+            border: 1px solid #dc3545;
+            padding: 5px 10px;
+            transition: all 0.2s;
+        }
+
+            .btn-delete:hover {
+                background: #dc3545;
+                color: white;
+            }
+
+        .btn-edit {
+            color: #198754;
+            border: 1px solid #198754;
+            padding: 5px 10px;
+            transition: all 0.2s;
+        }
+
+            .btn-edit:hover {
+                background: #198754;
+                color: white;
+            }
+
+        .btn-add-customer {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+            .btn-add-customer:hover {
+                background: linear-gradient(45deg, #1976D2, #1565C0);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+                color: white;
+            }
+
+            .btn-add-customer:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .btn-add-customer i {
+                font-size: 1.1em;
+            }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
 
 <section class="content container-fluid">
+    @if (Model.ShowWelcomeMessage)
+    {
+        <script>
+                $(document).ready(function () {
+                toastr.success('Hoşgeldiniz, @Model.Username.ToUpper()!');
+            });
+        </script>
+       
+        // ShowWelcomeMessage değerini temizle
+        TempData.Remove("ShowWelcomeMessage");
+        TempData.Remove("Username");
+    
+    }
+
+
     <div class="filter-section">
         <div class="filter-header" id="filterToggle">
             <h5 class="mb-0">
@@ -196,41 +237,41 @@
                 <div class="filter-row">
                     <div class="filter-group">
                         <i class="fas fa-user filter-icon"></i>
-                        <input type="text" id="firstNameFilter" name="firstNameFilter" 
-                            class="filter-input" value="@Model.FirstNameFilter" 
-                            placeholder="Ad ile filtrele..." />
+                        <input type="text" id="firstNameFilter" name="firstNameFilter"
+                               class="filter-input" value="@Model.FirstNameFilter"
+                               placeholder="Ad ile filtrele..." />
                     </div>
                     <div class="filter-group">
                         <i class="fas fa-user-tag filter-icon"></i>
-                        <input type="text" id="lastNameFilter" name="lastNameFilter" 
-                            class="filter-input" value="@Model.LastNameFilter" 
-                            placeholder="Soyad ile filtrele..." />
+                        <input type="text" id="lastNameFilter" name="lastNameFilter"
+                               class="filter-input" value="@Model.LastNameFilter"
+                               placeholder="Soyad ile filtrele..." />
                     </div>
                     <div class="filter-group">
                         <i class="fas fa-city filter-icon"></i>
-                        <input type="text" id="regionFilter" name="regionFilter" 
-                            class="filter-input" value="@Model.RegionFilter" 
-                            placeholder="Şehir ile filtrele..." />
+                        <input type="text" id="regionFilter" name="regionFilter"
+                               class="filter-input" value="@Model.RegionFilter"
+                               placeholder="Şehir ile filtrele..." />
                     </div>
                     <div class="filter-group">
                         <i class="fas fa-at filter-icon"></i>
-                        <input type="text" id="emailDomainFilter" name="emailDomainFilter" 
-                            class="filter-input" value="@Model.EmailFilter" 
-                            placeholder="Domain ile filtrele..." />
+                        <input type="text" id="emailDomainFilter" name="emailDomainFilter"
+                               class="filter-input" value="@Model.EmailFilter"
+                               placeholder="Domain ile filtrele..." />
                     </div>
                 </div>
                 <div class="filter-row">
                     <div class="filter-group">
                         <i class="fas fa-calendar-alt filter-icon"></i>
-                        <input type="date" id="startDate" name="startDate" 
-                            class="filter-input" 
-                            value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+                        <input type="date" id="startDate" name="startDate"
+                               class="filter-input"
+                               value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
                     </div>
                     <div class="filter-group">
                         <i class="fas fa-calendar-alt filter-icon"></i>
-                        <input type="date" id="endDate" name="endDate" 
-                            class="filter-input" 
-                            value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+                        <input type="date" id="endDate" name="endDate"
+                               class="filter-input"
+                               value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
                     </div>
                     <div class="filter-group text-end">
                         <button type="button" id="resetFilters" class="btn-reset">
@@ -273,12 +314,12 @@
                         <td>@item.RegistrationDate.ToString("dd-MM-yyyy")</td>
                         <td>
                             <div class="btn-group">
-                                <button onclick="deleteCustomerConfirm(@item.Id)" 
-                                    class="btn btn-delete me-2">
+                                <button onclick="deleteCustomerConfirm(@item.Id)"
+                                        class="btn btn-delete me-2">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
-                                <a href="/Customer/UpdateCustomer/@item.Id" 
-                                    class="btn btn-edit">
+                                <a href="/Customer/UpdateCustomer/@item.Id"
+                                   class="btn btn-edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                             </div>
@@ -289,274 +330,6 @@
         </table>
     </div>
 </section>
+@Html.Partial("~/Views/PartialViews/_CustomerIndexScriptsPartial.cshtml")
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-    // Filtre Toggle İşlemi
-    const filterToggle = document.getElementById("filterToggle");
-    filterToggle.addEventListener("click", function (e) {
-        if (!('@ViewBag.HasFilterPermission' == 'True')) {
-            e.preventDefault();
-            Swal.fire({
-                icon: 'error',
-                title: 'Yetkisiz Erişim',
-                text: 'Bu alana erişim yetkiniz yok. Lütfen yetkili kullanıcı ile oturum açınız.'
-            });
-        } 
-        else {
-            $("#filterContent").slideToggle(); 
-            $(this).find("i:last").toggleClass("fa-chevron-down fa-chevron-up"); 
-        }
-    });
-
-    // Sıralama İşlemleri
-    const sortStates = new Map();
-
-    const compareFunctions = {
-        index: (a, b, asc) => {
-            const v1 = parseInt(getCellValue(a, 0));
-            const v2 = parseInt(getCellValue(b, 0));
-            return asc ? v1 - v2 : v2 - v1;
-        },
-        date: (a, b, asc) => {
-            const v1 = parseDate(getCellValue(a, 5));
-            const v2 = parseDate(getCellValue(b, 5));
-            return asc ? v1 - v2 : v2 - v1;
-        },
-        text: (a, b, asc) => {
-            const v1 = getCellValue(a, 0).toLowerCase();
-            const v2 = getCellValue(b, 0).toLowerCase();
-            return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
-        }
-    };
-
-    function parseDate(dateStr) {
-        const [day, month, year] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day).getTime();
-    }
-
-    const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
-
-    function formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('tr-TR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-    }
-
-    const updateSortIndicator = (th, sortState) => {
-        th.closest('tr').querySelectorAll('th').forEach(header => {
-            header.classList.remove('asc', 'desc');
-        });
-
-        if (sortState === 'asc') {
-            th.classList.add('asc');
-        } else if (sortState === 'desc') {
-            th.classList.add('desc');
-        }
-    };
-
-    // Sıralama Event Listener'ları
-    document.querySelectorAll('th[data-sort]').forEach(th => {
-        const sortKey = th.getAttribute('data-sort');
-        sortStates.set(th, 'none');
-
-        th.addEventListener('click', () => {
-            const table = th.closest('table');
-            const tbody = table.querySelector('tbody');
-            const currentState = sortStates.get(th);
-            
-            let newState;
-            switch (currentState) {
-                case 'none': newState = 'asc'; break;
-                case 'asc': newState = 'desc'; break;
-                case 'desc': newState = 'none'; break;
-            }
-            sortStates.set(th, newState);
-
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            
-            if (newState === 'none') {
-                rows.sort((a, b) => compareFunctions.index(a, b, true));
-            } else {
-                let compareFunc;
-                if (sortKey === 'date') {
-                    compareFunc = compareFunctions.date;
-                } else if (sortKey === 'index') {
-                    compareFunc = compareFunctions.index;
-                } else {
-                    compareFunc = (a, b, asc) => {
-                        const columnIndex = Array.from(th.parentNode.children).indexOf(th);
-                        const v1 = getCellValue(a, columnIndex).toLowerCase();
-                        const v2 = getCellValue(b, columnIndex).toLowerCase();
-                        return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
-                    };
-                }
-
-                rows.sort((a, b) => compareFunc(a, b, newState === 'asc'));
-            }
-
-            tbody.innerHTML = '';
-            rows.forEach(row => tbody.appendChild(row));
-            updateSortIndicator(th, newState);
-        });
-    });
-
-    // Filtreleme İşlemleri
-    let filterTimer;
-    const filterDelay = 300;
-
-    $('.filter-input').on('input', function() {
-        if (!('@ViewBag.HasFilterPermission' === 'True')) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Yetkisiz Erişim',
-                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
-            });
-            return;
-        }
-
-        clearTimeout(filterTimer);
-        filterTimer = setTimeout(filterCustomers, filterDelay);
-    });
-
-    $('#resetFilters').on('click', function() {
-        if (!('@ViewBag.HasFilterPermission' === 'True')) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Yetkisiz Erişim',
-                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
-            });
-            return;
-        }
-        
-        $('#filterForm')[0].reset();
-        filterCustomers();
-    });
-
-    function filterCustomers() {
-        if (!('@ViewBag.HasFilterPermission' === 'True')) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Yetkisiz Erişim',
-                text: 'Filtreleme yapmak için yetkiniz bulunmuyor.'
-            });
-            return;
-        }
-
-        $.ajax({
-            url: '/Customer/Index',
-            type: 'GET',
-            data: {
-                firstNameFilter: $('#firstNameFilter').val(),
-                lastNameFilter: $('#lastNameFilter').val(),
-                regionFilter: $('#regionFilter').val(),
-                emailDomainFilter: $('#emailDomainFilter').val(),
-                startDate: $('#startDate').val(),
-                endDate: $('#endDate').val()
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            success: function(response) {
-                updateTable(response);
-            },
-            error: function(xhr, status, error) {
-                console.error('Filtreleme hatası:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Hata!',
-                    text: 'Filtreleme sırasında bir hata oluştu'
-                });
-            }
-        });
-    }
-
-    function updateTable(customers) {
-        const tbody = $('#customerTableBody');
-        tbody.empty();
-
-        if (customers && customers.length > 0) {
-            customers.forEach((customer, index) => {
-                const row = `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${customer.firstName}</td>
-                        <td>${customer.lastName}</td>
-                        <td>${customer.email}</td>
-                        <td>${customer.region}</td>
-                        <td>${formatDate(customer.registrationDate)}</td>
-                        <td>
-                            <div class="btn-group">
-                                <button onclick="deleteCustomerConfirm(${customer.id})" 
-                                    class="btn btn-delete me-2">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                                <a href="/Customer/UpdateCustomer/${customer.id}" 
-                                    class="btn btn-edit">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                tbody.append(row);
-            });
-        } else {
-            tbody.append(`
-                <tr>
-                    <td colspan="7" class="text-center">
-                        <i class="fas fa-search me-2"></i>
-                        Müşteri bulunamadı
-                    </td>
-                </tr>
-            `);
-        }
-    }
-});
-
-// Müşteri Silme İşlemi
-function deleteCustomerConfirm(id) {
-    Swal.fire({
-        title: 'Bu Müşteriyi veritabanından silmek istediğinize emin misiniz?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Evet, sil!',
-        cancelButtonText: 'Hayır, iptal et!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch("/Customer/DeleteCustomer/" + id, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                Swal.fire({
-                    title: 'Silindi!',
-                    text: 'Müşteri başarıyla silindi.',
-                    icon: 'success',
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    window.location.href = '/Customer/Index?deleted=true';
-                });
-            })
-            .catch(error => {
-                Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
-            });
-        }
-    });
-}
-
-// Hoş Geldiniz Mesajı
-if (document.querySelector('[data-show-welcome="true"]')) {
-    document.addEventListener('DOMContentLoaded', function() {
-        const username = document.querySelector('[data-username]').dataset.username;
-        showToast("Hoş geldiniz, " + username, "success");
-    });
-}
-    </script>
 

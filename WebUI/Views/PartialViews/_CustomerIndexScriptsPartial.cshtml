@@ -1,5 +1,5 @@
 ﻿<script>
-          document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function () {
         // Filtre Toggle İşlemi
         const filterToggle = document.getElementById("filterToggle");
         filterToggle.addEventListener("click", function (e) {
@@ -116,7 +116,7 @@
         let filterTimer;
         const filterDelay = 300;
 
-        $('.filter-input').on('input', function() {
+        $('.filter-input').on('input', function () {
             if (!('@ViewBag.HasFilterPermission' === 'True')) {
                 Swal.fire({
                     icon: 'error',
@@ -130,7 +130,7 @@
             filterTimer = setTimeout(filterCustomers, filterDelay);
         });
 
-        $('#resetFilters').on('click', function() {
+        $('#resetFilters').on('click', function () {
             if (!('@ViewBag.HasFilterPermission' === 'True')) {
                 Swal.fire({
                     icon: 'error',
@@ -168,10 +168,10 @@
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                success: function(response) {
+                success: function (response) {
                     updateTable(response);
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     console.error('Filtreleme hatası:', error);
                     Swal.fire({
                         icon: 'error',
@@ -241,29 +241,24 @@
                         'Content-Type': 'application/json'
                     }
                 })
-                .then(response => {
-                    Swal.fire({
-                        title: 'Silindi!',
-                        text: 'Müşteri başarıyla silindi.',
-                        icon: 'success',
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        window.location.href = '/Customer/Index?deleted=true';
+                    .then(response => {
+                        Swal.fire({
+                            title: 'Silindi!',
+                            text: 'Müşteri başarıyla silindi.',
+                            icon: 'success',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            window.location.href = '/Customer/Index?deleted=true';
+                        });
+                    })
+                    .catch(error => {
+                        Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
                     });
-                })
-                .catch(error => {
-                    Swal.fire('Hata!', 'Silme işlemi sırasında hata oluştu.', 'error');
-                });
             }
         });
     }
 
-    // Hoş Geldiniz Mesajı
-    if (document.querySelector('[data-show-welcome="true"]')) {
-        document.addEventListener('DOMContentLoaded', function() {
-            const username = document.querySelector('[data-username]').dataset.username;
-            showToast("Hoş geldiniz, " + username, "success");
-        });
-    }
+   
+
 </script>

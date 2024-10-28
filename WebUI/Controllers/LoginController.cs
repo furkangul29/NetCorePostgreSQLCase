@@ -63,8 +63,9 @@ namespace WebUI.Controllers
                 HttpContext.Session.SetString("AccessToken", token);
                 _logger.LogInformation("Token oturumda saklandı. Kullanıcı: {Username}", signInDto.Username);
 
-                HttpContext.Session.SetString("ShowWelcomeMessage", "true");
-                HttpContext.Session.SetString("Username", signInDto.Username);
+               
+                TempData["ShowWelcomeMessage"] = true;
+                TempData["Username"] = signInDto.Username;
 
                 _logger.LogInformation("Kullanıcı başarıyla giriş yaptı: {Username}. Giriş zamanı: {Time}", signInDto.Username, DateTime.Now);
                 return Ok(new { success = true }); // Başarılı yanıt döndür
